@@ -1,4 +1,13 @@
-### Requirements
+## Credits to [unteifu](https://github.com/unteifu/wAIfu) for creating this (Huge Thank you~!!!!)
+
+# I focused on:
+- Performance optimizations
+- Latency improvments
+- Live2d lag fix
+- Speech to Text coming soon
+
+
+### Requirements (same with the original repo) 
 * node
 * pnpm >= 9.2.0
   ```sh
@@ -32,3 +41,4 @@
 5. Open [http://localhost:3000](http://localhost:3000) and wallah you done :)
 
 Have a nice chat
+
