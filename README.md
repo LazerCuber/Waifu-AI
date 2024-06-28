@@ -1,7 +1,7 @@
 ## Credits to [unteifu](https://github.com/unteifu/wAIfu) for creating this (Huge Thank you~!!!!)
 
-# I focused on:
-- Performance optimizations
+# What is this for?:
+- Some more performance optimizations
 - Latency improvments
 - Live2d lag fix
 - Speech to Text coming soon
