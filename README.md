@@ -1,6 +1,6 @@
 <div align="center">
-  <h3 align="center">wAIfu</h3>
-  <p align="center">An AI anime companion with live2d</p>
+  <h3 align="center">Waifu</h3>
+  <p align="center">An AI anime companion with Live2d and Text to speech </p>
 </div>
 
 ### Built With
