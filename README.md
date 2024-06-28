@@ -1,15 +1,4 @@
-<div align="center">
-  <h3 align="center">Waifu</h3>
-  <p align="center">An AI anime companion with Live2d and Text to speech </p>
-</div>
-
-### Built With
-* [Next.js](https://nextjs.org/)
-* [Vercel AI](https://vercel.com/ai)
-* [ElevenLabs](https://eleven-labs.com/)
-* [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display/)
-
-### Prerequisites
+### Requirements
 * node
 * pnpm >= 9.2.0
   ```sh
@@ -40,4 +29,6 @@
     ```sh
     pnpm run dev
     ```
-5. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result
+5. Open [http://localhost:3000](http://localhost:3000) and wallah you done :)
+
+Have a nice chat
