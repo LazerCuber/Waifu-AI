@@ -1,22 +1,22 @@
-<div align="center">
-  <h3 align="center">wAIfu</h3>
-  <p align="center">An AI anime companion with live2d</p>
-</div>
+## Credits to [unteifu](https://github.com/unteifu/wAIfu) for creating this (Bro created this whole thing!)
 
-### Built With
-* [Next.js](https://nextjs.org/)
-* [Vercel AI](https://vercel.com/ai)
-* [ElevenLabs](https://eleven-labs.com/)
-* [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display/)
+# What is this for the?:
+- Some more performance optimizations
+- Latency improvments
+- Live2d lag fix
+- Speech to Text coming soon
+- Moving background
+- Live2d Mouth working
 
-### Prerequisites
+
+### Requirements (same with the original repo) 
 * node
 * pnpm >= 9.2.0
   ```sh
   npm install -g pnpm
   ```
 * ChatGPT or Groq API key (optional)
-* Mistral API key (optional)
+* Mistral API key (optional, must choose either one of them)
 * ElevenLabs API key
 
     or if you have the GitHub CLI installed
@@ -40,4 +40,7 @@
     ```sh
     pnpm run dev
     ```
-5. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result
+5. Open [http://localhost:3000](http://localhost:3000) and wallah you done :)
+
+Have a nice chat
+
