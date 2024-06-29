@@ -1,6 +1,6 @@
 ## Credits to [unteifu](https://github.com/unteifu/wAIfu) for creating this (Bro created this whole thing!)
 
-# What is this for the?:
+# Then what is this for?:
 - Some more performance optimizations
 - Latency improvments
 - Live2d lag fix
