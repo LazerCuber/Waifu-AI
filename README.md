@@ -1,13 +1,12 @@
 ## Credits to the [original repo](https://github.com/unteifu/wAIfu) 
 
-# Then what is this for?:
+# So what is this for?:
 - Some more performance optimizations
 - Latency improvments
 - Live2d lag fix
 - Speech to Text coming soon
 - Moving background
 - Live2d Mouth working
-
 
 ### Requirements (same with the original repo) 
 * node
