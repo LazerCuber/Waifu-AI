@@ -1,4 +1,4 @@
-## Credits to [unteifu](https://github.com/unteifu/wAIfu) for creating this (Bro created this whole thing!)
+## Credits to [the original repo](https://github.com/unteifu/wAIfu) )
 
 # Then what is this for?:
 - Some more performance optimizations
