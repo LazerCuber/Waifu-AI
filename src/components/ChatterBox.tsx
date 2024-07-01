@@ -2,14 +2,14 @@
 
 import { useAtom } from "jotai";
 import React from "react";
-import { isLoadingAtom, lastMessageAtom } from "~/atoms/ChatAtom";
+import { isLoadingAtom, displayedTextAtom } from "~/atoms/ChatAtom";
 import Spinner from "./Spinner";
 
 export default function ChatterBox() {
-  const [message] = useAtom(lastMessageAtom);
+  const [displayedText] = useAtom(displayedTextAtom);
   const [isLoading] = useAtom(isLoadingAtom);
 
-  if (!message && !isLoading) {
+  if (!displayedText && !isLoading) {
     return null;
   }
 
@@ -20,7 +20,7 @@ export default function ChatterBox() {
       ) : (
         <div className="flex max-w-3xl justify-center border-[3px] rounded-[14px] bg-white p-4 shadow">
           <span className="overflow-hidden text-center font-medium">
-            {message?.content as string}
+            {displayedText}
           </span>
         </div>
       )}
