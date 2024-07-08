@@ -21,7 +21,7 @@
     or if you have the GitHub CLI installed
 
     ```sh
-   gh repo clone unteifu/wAIfu
+   gh repo clone LazerCuber/Waifu-AI
     ```
 2. Install NPM packages
     ```sh
