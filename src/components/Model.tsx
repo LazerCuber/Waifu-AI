@@ -15,12 +15,7 @@ if (typeof window !== "undefined") {
   window.PIXI = PIXI;
 }
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Improved easing function
-function easeOutQuint(t: number): number {
-  return 1 - Math.pow(1 - t, 5);
-}
+const easeOutQuint = (t: number): number => 1 - Math.pow(1 - t, 5);
 
 interface Vector2D {
   x: number;
@@ -36,15 +31,17 @@ export default function Model() {
   const lastMouseMoveRef = useRef<number>(0);
   const targetPositionRef = useRef<Vector2D>({ x: 0, y: 0 });
   const currentPositionRef = useRef<Vector2D>({ x: 0, y: 0 });
-  const velocityRef = useRef<Vector2D>({ x: 0, y: 0 });
 
   useEffect(() => {
+    let app: PIXI.Application;
+    let animationFrameId: number;
+
     const init = async () => {
       if (!canvasRef.current || typeof window === "undefined") return;
 
       const { Live2DModel } = await import("pixi-live2d-display/cubism4");
 
-      const app = new PIXI.Application({
+      app = new PIXI.Application({
         view: canvasRef.current,
         transparent: true,
         height: window.innerHeight,
@@ -60,28 +57,23 @@ export default function Model() {
       app.stage.addChild(model);
       model.anchor.set(0.5, 0.78);
 
-      let scale;
-      if (app.screen.width / app.screen.height > model.width / model.height) {
-        scale = app.screen.height / model.height;
-      } else {
-        scale = app.screen.width / model.width;
-      }
+      const updateModelSize = () => {
+        const scale = Math.min(app.screen.width / model.width, app.screen.height / model.height);
+        model.scale.set(scale * 1);
+        model.position.set(app.screen.width / 2, app.screen.height * 0.85);
+      };
 
-      model.scale.set(scale * 1);
-      model.position.set(app.screen.width / 2, app.screen.height * 0.85);
+      updateModelSize();
 
       const sensitivity = 0.95;
-      const smoothness = 0.025; // Adjust this value to change smoothness (lower = smoother)
+      const smoothness = 0.1;
 
       const onMouseMove = (event: MouseEvent) => {
         if (!model) return;
 
         const rect = app.view.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
-
-        const normalizedX = (mouseX / app.screen.width - 0.5) * 2;
-        const normalizedY = (mouseY / app.screen.height - 0.5) * 2;
+        const normalizedX = ((event.clientX - rect.left) / app.screen.width - 0.5) * 2;
+        const normalizedY = ((event.clientY - rect.top) / app.screen.height - 0.5) * 2;
 
         targetPositionRef.current = {
           x: normalizedX * sensitivity,
@@ -110,39 +102,28 @@ export default function Model() {
           target = targetPositionRef.current;
         }
 
-        // Calculate new position using smoothing
         currentPositionRef.current.x += (target.x - currentPositionRef.current.x) * smoothness;
         currentPositionRef.current.y += (target.y - currentPositionRef.current.y) * smoothness;
 
-        // Apply the new position
         model.internalModel.focusController.focus(currentPositionRef.current.x, currentPositionRef.current.y);
+
+        animationFrameId = requestAnimationFrame(updateHeadPosition);
       };
 
       app.view.addEventListener('mousemove', onMouseMove);
-      app.ticker.add(updateHeadPosition);
+      updateHeadPosition();
 
-      // Ensure the canvas size matches the display size
-      app.renderer.resize(window.innerWidth, window.innerHeight);
-
-      // Add window resize listener
       const handleResize = () => {
         app.renderer.resize(window.innerWidth, window.innerHeight);
-        if (app.screen.width / app.screen.height > model.width / model.height) {
-          scale = app.screen.height / model.height;
-        } else {
-          scale = app.screen.width / model.width;
-        }
-        model.scale.set(scale * 1);
-        model.position.set(app.screen.width / 2, app.screen.height * 0.85);
+        updateModelSize();
       };
 
       window.addEventListener('resize', handleResize);
 
-      // Clean up function
       return () => {
         window.removeEventListener('resize', handleResize);
         app.view.removeEventListener('mousemove', onMouseMove);
-        app.ticker.remove(updateHeadPosition);
+        cancelAnimationFrame(animationFrameId);
         app.destroy(true, { children: true, texture: true, baseTexture: true });
       };
     };
@@ -155,8 +136,8 @@ export default function Model() {
       if (lastMessage && lastMessage.role === 'assistant' && modelRef.current && !isLoading) {
         setIsLipSyncing(true);
         const duration = lastMessage.content.length * 50;
-
         const startTime = Date.now();
+
         const animate = () => {
           if (modelRef.current && Date.now() - startTime < duration) {
             const openness = Math.sin((Date.now() - startTime) / 100) * 0.5 + 0.5;
