@@ -32,10 +32,9 @@ export default function Model() {
   const targetPositionRef = useRef<Vector2D>({ x: 0, y: 0 });
   const currentPositionRef = useRef<Vector2D>({ x: 0, y: 0 });
   const appRef = useRef<PIXI.Application | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
-
     const init = async () => {
       if (!canvasRef.current || typeof window === "undefined") return;
 
@@ -44,8 +43,7 @@ export default function Model() {
       const app = new PIXI.Application({
         view: canvasRef.current,
         transparent: true,
-        height: window.innerHeight,
-        width: window.innerWidth,
+        resizeTo: window,
         resolution: window.devicePixelRatio || 1,
         autoDensity: true,
         antialias: true,
@@ -59,7 +57,7 @@ export default function Model() {
       model.anchor.set(0.5, 0.78);
 
       const updateModelSize = () => {
-        if (!model || !app) return;
+        if (!model || !app.screen) return;
         const scale = Math.min(app.screen.width / model.width, app.screen.height / model.height);
         model.scale.set(scale * 1);
         model.position.set(app.screen.width / 2, app.screen.height * 0.85);
@@ -71,11 +69,11 @@ export default function Model() {
       const smoothness = 0.1;
 
       const onMouseMove = (event: MouseEvent) => {
-        if (!model || !app || !app.view) return;
+        if (!model || !app.screen || !app.view) return;
 
         const rect = app.view.getBoundingClientRect();
-        const normalizedX = ((event.clientX - rect.left) / app.screen.width - 0.5) * 2;
-        const normalizedY = ((event.clientY - rect.top) / app.screen.height - 0.5) * 2;
+        const normalizedX = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+        const normalizedY = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
 
         targetPositionRef.current = {
           x: normalizedX * sensitivity,
@@ -107,9 +105,9 @@ export default function Model() {
         currentPositionRef.current.x += (target.x - currentPositionRef.current.x) * smoothness;
         currentPositionRef.current.y += (target.y - currentPositionRef.current.y) * smoothness;
 
-        model.internalModel.focusController.focus(currentPositionRef.current.x, currentPositionRef.current.y);
+        model.internalModel.focusController?.focus(currentPositionRef.current.x, currentPositionRef.current.y);
 
-        requestAnimationFrame(updateHeadPosition);
+        animationFrameRef.current = requestAnimationFrame(updateHeadPosition);
       };
 
       app.view.addEventListener('mousemove', onMouseMove);
@@ -123,18 +121,17 @@ export default function Model() {
 
       window.addEventListener('resize', handleResize);
 
-      cleanup = () => {
+      return () => {
         window.removeEventListener('resize', handleResize);
         app.view.removeEventListener('mousemove', onMouseMove);
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
         app.destroy(true, { children: true, texture: true, baseTexture: true });
       };
     };
 
-    void init();
-
-    return () => {
-      if (cleanup) cleanup();
-    };
+    init();
   }, []);
 
   useEffect(() => {
