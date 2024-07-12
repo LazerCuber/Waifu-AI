@@ -43,3 +43,69 @@
 
 Have a nice chat
 
+
+```
+Waifu-AI
+├─ .eslintrc.cjs
+│  ├─ index
+│  ├─ info
+│  │  └─ exclude
+│  ├─ logs
+│  │  ├─ HEAD
+│  │  └─ refs
+│  │     ├─ heads
+│  │     │  ├─ main
+│  │     │  └─ stuff
+│  │     └─ remotes
+│  │        └─ origin
+│  │           ├─ main
+│  │           └─ stuff
+│  ├─ objects
+│  │  ├─ info
+│  │  └─ pack
+│  ├─ ORIG_HEAD
+│  └─ refs
+│     ├─ heads
+│     │  ├─ main
+│     │  └─ stuff
+│     ├─ remotes
+│     │  └─ origin
+│     │     ├─ main
+│     │     └─ stuff
+│     └─ tags
+├─ .gitignore
+├─ next.config.js
+├─ package.json
+├─ pnpm-lock.yaml
+├─ postcss.config.cjs
+├─ prettier.config.js
+├─ public
+│  ├─ layerfull.svg
+│  ├─ live2dcubismcore.min.js
+│  ├─ model
+├─ README.md
+├─ src
+│  ├─ app
+│  │  ├─ api
+│  │  │  ├─ chat
+│  │  │  │  └─ route.ts
+│  │  │  └─ synthasize
+│  │  │     └─ route.ts
+│  │  ├─ layout.tsx
+│  │  └─ page.tsx
+│  ├─ atoms
+│  │  └─ ChatAtom.ts
+│  ├─ components
+│  │  ├─ ChatInput.tsx
+│  │  ├─ ChatterBox.tsx
+│  │  ├─ Model.tsx
+│  │  └─ Spinner.tsx
+│  ├─ env.js
+│  └─ styles
+│     └─ globals.css
+├─ static
+│  └─ favicon.ico
+├─ tailwind.config.ts
+└─ tsconfig.json
+
+```

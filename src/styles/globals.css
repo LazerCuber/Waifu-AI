@@ -9,7 +9,7 @@
   width: 300%;
   height: 100%;
   display: flex;
-  animation: slide-left 60s linear infinite;
+  /*animation: slide-left 60s linear infinite;*/
 }
 
 .background-image {

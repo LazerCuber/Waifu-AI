@@ -4,7 +4,7 @@ import { Provider } from "jotai";
 import Head from "next/head";
 
 export const metadata = {
-  title: "Waifu AI",
+  title: "Waifu.AI",
   icons: {
     icon: "/static/favicon.ico",
   },

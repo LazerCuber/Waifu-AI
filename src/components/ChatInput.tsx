@@ -2,7 +2,7 @@
 
 import type { CoreMessage } from "ai";
 import { useAtom } from "jotai";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { IoSend } from "react-icons/io5";
 import {
   isLoadingAtom,
@@ -19,7 +19,6 @@ export default function ChatInput() {
   const [isLoading, setIsLoading] = useAtom(isLoadingAtom);
 
   const [input, setInput] = useState("");
-  const audioRef = useRef<HTMLAudioElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
 
@@ -30,7 +29,35 @@ export default function ChatInput() {
     };
   }, []);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  const synthesizeSentence = useCallback(async (sentence: string): Promise<ArrayBuffer> => {
+    const voiceResponse = await fetch("/api/synthasize", {
+      method: "POST",
+      body: JSON.stringify({ message: { content: sentence, role: "assistant" } }),
+    });
+    return await voiceResponse.arrayBuffer();
+  }, []);
+
+  const playSentence = useCallback(async (audioBuffer: ArrayBuffer): Promise<void> => {
+    if (!audioContextRef.current) return;
+
+    return new Promise((resolve) => {
+      audioContextRef.current!.decodeAudioData(audioBuffer, (decodedBuffer) => {
+        if (sourceNodeRef.current) {
+          sourceNodeRef.current.stop();
+          sourceNodeRef.current.disconnect();
+        }
+
+        sourceNodeRef.current = audioContextRef.current!.createBufferSource();
+        sourceNodeRef.current.buffer = decodedBuffer;
+        sourceNodeRef.current.connect(audioContextRef.current!.destination);
+
+        sourceNodeRef.current.onended = () => resolve();
+        sourceNodeRef.current.start();
+      });
+    });
+  }, []);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     const newMessages: CoreMessage[] = [
@@ -51,67 +78,32 @@ export default function ChatInput() {
     setIsLoading(false);
     setMessages([...newMessages, textResult]);
 
-    const sentences = typeof textResult.content === 'string'
-      ? textResult.content.split(/(?<=\.|\?|!)/).map(s => s.trim()).filter(s => s.length > 0)
-      : [];
+    if (typeof textResult.content !== 'string') return;
 
-    const synthesizeSentence = async (sentence: string | undefined) => {
-      const voiceResponse = await fetch("/api/synthasize", {
-        method: "POST",
-        body: JSON.stringify({ message: { content: sentence ?? '', role: textResult.role } }),
-      });
-      return await voiceResponse.arrayBuffer();
-    };
-
-    const playSentence = async (audioBuffer: ArrayBuffer): Promise<void> => {
-      if (!audioContextRef.current) return;
-
-      return new Promise((resolve) => {
-        audioContextRef.current!.decodeAudioData(audioBuffer, (decodedBuffer) => {
-          if (sourceNodeRef.current) {
-            sourceNodeRef.current.stop();
-            sourceNodeRef.current.disconnect();
-          }
-
-          sourceNodeRef.current = audioContextRef.current!.createBufferSource();
-          sourceNodeRef.current.buffer = decodedBuffer;
-          sourceNodeRef.current.connect(audioContextRef.current!.destination);
-
-          sourceNodeRef.current.onended = () => resolve();
-          sourceNodeRef.current.start();
-        });
-      });
-    };
+    const sentences = textResult.content.split(/(?<=\.|\?|!)/).map(s => s.trim()).filter(s => s.length > 0);
 
     const maxConcurrent = 3;
     let currentIndex = 0;
-    let inProgress = 0;
     const audioQueue: ArrayBuffer[] = [];
+    let playingPromise: Promise<void> | null = null;
 
-    async function synthesizeNext() {
-      if (currentIndex >= sentences.length || inProgress >= maxConcurrent) return;
+    const synthesizeAndPlay = async () => {
+      while (currentIndex < sentences.length) {
+        const sentenceBatch = sentences.slice(currentIndex, currentIndex + maxConcurrent);
+        currentIndex += maxConcurrent;
 
-      const sentenceIndex = currentIndex++;
-      const sentence = sentences[sentenceIndex];
-      inProgress++;
+        const audioBatch = await Promise.all(sentenceBatch.map(synthesizeSentence));
+        audioQueue.push(...audioBatch);
 
-      try {
-        const audio = await synthesizeSentence(sentence);
-        audioQueue[sentenceIndex] = audio;
-        inProgress--;
-
-        if (sentenceIndex === 0) playNext(); // Start playing immediately for the first sentence
-        synthesizeNext(); // Start next synthesis if possible
-      } catch (error) {
-        console.error(`Error synthesizing sentence: ${sentence}`, error);
-        inProgress--;
-        synthesizeNext(); // Try the next sentence
+        if (!playingPromise) {
+          playingPromise = playNextSentence();
+        }
       }
-    }
+    };
 
-    async function playNext() {
+    const playNextSentence = async (): Promise<void> => {
       if (audioQueue.length === 0) {
-        setTimeout(playNext, 50);
+        playingPromise = null;
         return;
       }
 
@@ -120,23 +112,18 @@ export default function ChatInput() {
         await playSentence(audio);
       }
 
-      if (audioQueue.length > 0 || inProgress > 0 || currentIndex < sentences.length) {
-        playNext();
-      }
-    }
+      return playNextSentence();
+    };
 
-    // Start initial batch of concurrent syntheses
-    for (let i = 0; i < maxConcurrent; i++) {
-      synthesizeNext();
-    }
-  }
+    synthesizeAndPlay();
+  }, [messages, input, setMessages, setLastMessage, setIsLoading, synthesizeSentence, playSentence]);
 
   return (
     <div className="absolute bottom-10 h-10 w-full max-w-lg px-5">
       <form onSubmit={handleSubmit}>
         <div className="flex w-full items-center overflow-hidden rounded-[12px] border-[3px] bg-white shadow">
           <input
-            className=" h-full flex-1 px-5 py-2 pr-0 text-neutral-800 outline-none"
+            className="h-full flex-1 px-5 py-2 pr-0 text-neutral-800 outline-none"
             type="text"
             placeholder="Enter your message..."
             onChange={(e) => setInput(e.target.value)}
