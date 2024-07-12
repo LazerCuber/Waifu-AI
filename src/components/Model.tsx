@@ -31,17 +31,17 @@ export default function Model() {
   const lastMouseMoveRef = useRef<number>(0);
   const targetPositionRef = useRef<Vector2D>({ x: 0, y: 0 });
   const currentPositionRef = useRef<Vector2D>({ x: 0, y: 0 });
+  const appRef = useRef<PIXI.Application | null>(null);
 
   useEffect(() => {
-    let app: PIXI.Application;
-    let animationFrameId: number;
+    let cleanup: (() => void) | undefined;
 
     const init = async () => {
       if (!canvasRef.current || typeof window === "undefined") return;
 
       const { Live2DModel } = await import("pixi-live2d-display/cubism4");
 
-      app = new PIXI.Application({
+      const app = new PIXI.Application({
         view: canvasRef.current,
         transparent: true,
         height: window.innerHeight,
@@ -50,14 +50,16 @@ export default function Model() {
         autoDensity: true,
         antialias: true,
       });
+      appRef.current = app;
 
-      const model: Live2DModelType = await Live2DModel.from("/model/vanilla.model3.json");
+      const model: Live2DModelType = await Live2DModel.from("/model/vanilla/vanilla.model3.json");
       modelRef.current = model;
 
       app.stage.addChild(model);
       model.anchor.set(0.5, 0.78);
 
       const updateModelSize = () => {
+        if (!model || !app) return;
         const scale = Math.min(app.screen.width / model.width, app.screen.height / model.height);
         model.scale.set(scale * 1);
         model.position.set(app.screen.width / 2, app.screen.height * 0.85);
@@ -69,7 +71,7 @@ export default function Model() {
       const smoothness = 0.1;
 
       const onMouseMove = (event: MouseEvent) => {
-        if (!model) return;
+        if (!model || !app || !app.view) return;
 
         const rect = app.view.getBoundingClientRect();
         const normalizedX = ((event.clientX - rect.left) / app.screen.width - 0.5) * 2;
@@ -107,28 +109,32 @@ export default function Model() {
 
         model.internalModel.focusController.focus(currentPositionRef.current.x, currentPositionRef.current.y);
 
-        animationFrameId = requestAnimationFrame(updateHeadPosition);
+        requestAnimationFrame(updateHeadPosition);
       };
 
       app.view.addEventListener('mousemove', onMouseMove);
       updateHeadPosition();
 
       const handleResize = () => {
+        if (!app) return;
         app.renderer.resize(window.innerWidth, window.innerHeight);
         updateModelSize();
       };
 
       window.addEventListener('resize', handleResize);
 
-      return () => {
+      cleanup = () => {
         window.removeEventListener('resize', handleResize);
         app.view.removeEventListener('mousemove', onMouseMove);
-        cancelAnimationFrame(animationFrameId);
         app.destroy(true, { children: true, texture: true, baseTexture: true });
       };
     };
 
     void init();
+
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, []);
 
   useEffect(() => {
