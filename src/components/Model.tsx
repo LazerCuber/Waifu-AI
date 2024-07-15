@@ -1,19 +1,18 @@
 "use client";
 
 import * as PIXI from "pixi.js";
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import type { Live2DModel as Live2DModelType } from "pixi-live2d-display/cubism4";
 import { useAtom } from "jotai";
 import { lastMessageAtom, isLoadingAtom } from "~/atoms/ChatAtom";
 
-declare global {
-  interface Window {
-    PIXI: typeof PIXI;
-  }
-}
 if (typeof window !== "undefined") {
-  window.PIXI = PIXI;
+  (window as any).PIXI = PIXI;
 }
+
+const SENSITIVITY = 0.95;
+const SMOOTHNESS = 0.1;
+const RECENTER_DELAY = 1000;
 
 const easeOutQuint = (t: number): number => 1 - Math.pow(1 - t, 5);
 
@@ -22,35 +21,31 @@ interface Vector2D {
   y: number;
 }
 
-const SENSITIVITY = 0.95;
-const SMOOTHNESS = 0.1;
-const RECENTER_DELAY = 1000;
-
 export default function Model() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const modelRef = useRef<Live2DModelType | null>(null);
   const [lastMessage] = useAtom(lastMessageAtom);
   const [isLoading] = useAtom(isLoadingAtom);
-  const [isLipSyncing, setIsLipSyncing] = useState(false);
+
+  const modelRef = useRef<Live2DModelType | null>(null);
+  const appRef = useRef<PIXI.Application | null>(null);
   const lastMouseMoveRef = useRef<number>(0);
   const targetPositionRef = useRef<Vector2D>({ x: 0, y: 0 });
   const currentPositionRef = useRef<Vector2D>({ x: 0, y: 0 });
-  const appRef = useRef<PIXI.Application | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
   const updateModelSize = useCallback(() => {
     const model = modelRef.current;
     const app = appRef.current;
-    if (!model || !app || !app.screen) return;
+    if (!model || !app?.screen) return;
+
     const scale = Math.min(app.screen.width / model.width, app.screen.height / model.height);
-    model.scale.set(scale * 1);
+    model.scale.set(scale);
     model.position.set(app.screen.width / 2, app.screen.height * 0.85);
   }, []);
 
   const onMouseMove = useCallback((event: MouseEvent) => {
-    const model = modelRef.current;
     const app = appRef.current;
-    if (!model || !app || !app.screen || !app.view) return;
+    if (!app?.view) return;
 
     const rect = app.view.getBoundingClientRect();
     const normalizedX = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
@@ -87,9 +82,13 @@ export default function Model() {
     currentPositionRef.current.y += (target.y - currentPositionRef.current.y) * SMOOTHNESS;
 
     model.internalModel.focusController?.focus(currentPositionRef.current.x, currentPositionRef.current.y);
-
-    animationFrameRef.current = requestAnimationFrame(updateHeadPosition);
   }, []);
+
+  const animateFrame = useCallback(() => {
+    updateHeadPosition();
+    appRef.current?.render();
+    animationFrameRef.current = requestAnimationFrame(animateFrame);
+  }, [updateHeadPosition]);
 
   useEffect(() => {
     const init = async () => {
@@ -104,6 +103,8 @@ export default function Model() {
         resolution: window.devicePixelRatio || 1,
         autoDensity: true,
         antialias: true,
+        powerPreference: "high-performance",
+        backgroundColor: 0x00000000,
       });
       appRef.current = app;
 
@@ -114,12 +115,10 @@ export default function Model() {
       model.anchor.set(0.5, 0.78);
 
       updateModelSize();
-
-      app.view.addEventListener('mousemove', onMouseMove);
-      updateHeadPosition();
+      window.addEventListener('mousemove', onMouseMove);
+      animateFrame();
 
       const handleResize = () => {
-        if (!app) return;
         app.renderer.resize(window.innerWidth, window.innerHeight);
         updateModelSize();
       };
@@ -128,35 +127,31 @@ export default function Model() {
 
       return () => {
         window.removeEventListener('resize', handleResize);
-        app.view.removeEventListener('mousemove', onMouseMove);
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
+        window.removeEventListener('mousemove', onMouseMove);
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         app.destroy(true, { children: true, texture: true, baseTexture: true });
       };
     };
 
     init();
-  }, [onMouseMove, updateHeadPosition, updateModelSize]);
+  }, [onMouseMove, updateModelSize, animateFrame]);
 
   useEffect(() => {
-    let animationId: number;
     const lipSync = () => {
-      if (lastMessage && lastMessage.role === 'assistant' && modelRef.current && !isLoading) {
-        setIsLipSyncing(true);
+      if (lastMessage?.role === 'assistant' && modelRef.current && !isLoading) {
         const duration = lastMessage.content.length * 50;
         const startTime = Date.now();
 
         const animate = () => {
-          if (modelRef.current && Date.now() - startTime < duration) {
+          const model = modelRef.current;
+          if (!model) return;
+
+          if (Date.now() - startTime < duration) {
             const openness = Math.sin((Date.now() - startTime) / 100) * 0.5 + 0.5;
-            (modelRef.current.internalModel.coreModel as any).setParameterValueById('ParamMouthOpenY', openness);
-            animationId = requestAnimationFrame(animate);
+            (model.internalModel.coreModel as any).setParameterValueById('ParamMouthOpenY', openness);
+            requestAnimationFrame(animate);
           } else {
-            if (modelRef.current) {
-              (modelRef.current.internalModel.coreModel as any).setParameterValueById('ParamMouthOpenY', 0);
-            }
-            setIsLipSyncing(false);
+            (model.internalModel.coreModel as any).setParameterValueById('ParamMouthOpenY', 0);
           }
         };
 
@@ -165,12 +160,6 @@ export default function Model() {
     };
 
     lipSync();
-
-    return () => {
-      if (animationId) {
-        cancelAnimationFrame(animationId);
-      }
-    };
   }, [lastMessage, isLoading]);
 
   return <canvas ref={canvasRef}></canvas>;
