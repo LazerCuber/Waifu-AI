@@ -46,11 +46,13 @@ export default function Model() {
     const now = Date.now();
     const timeSinceLastMove = now - lastMouseMoveRef.current;
     let target = targetPositionRef.current;
+
     if (timeSinceLastMove > RECENTER_DELAY) {
       const t = Math.min((timeSinceLastMove - RECENTER_DELAY) / 2000, 1);
       const easedT = easeOutQuint(t);
       target = { x: target.x * (1 - easedT), y: target.y * (1 - easedT) };
     }
+
     currentPositionRef.current.x += (target.x - currentPositionRef.current.x) * SMOOTHNESS;
     currentPositionRef.current.y += (target.y - currentPositionRef.current.y) * SMOOTHNESS;
     model.internalModel.focusController?.focus(currentPositionRef.current.x, currentPositionRef.current.y);
@@ -58,7 +60,7 @@ export default function Model() {
 
   const animateFrame = useCallback(() => {
     updateHeadPosition();
-    appRef.current?.render();
+    appRef.current?.renderer.render(appRef.current.stage); // Use renderer.render for better performance
     animationFrameRef.current = requestAnimationFrame(animateFrame);
   }, [updateHeadPosition]);
 
@@ -84,6 +86,7 @@ export default function Model() {
       updateModelSize();
       window.addEventListener('mousemove', onMouseMove);
       animateFrame();
+
       const handleResize = () => {
         app.renderer.resize(window.innerWidth, window.innerHeight);
         updateModelSize();
