@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
   const audio = await elevenlabs.generate({
     voice: env.VOICE_ID,
-    model_id: "eleven_turbo_v2.5",
+    model_id: "eleven_turbo_v2",
     voice_settings: { similarity_boost: 0.5, stability: 0.5 },
     text: message.content as string,
   });
