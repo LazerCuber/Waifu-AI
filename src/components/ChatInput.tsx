@@ -29,47 +29,31 @@ export default function ChatInput() {
     };
   }, []);
 
-  const synthesizeSentence = useCallback(async (sentence: string): Promise<ArrayBuffer | null> => {
-    try {
-      const voiceResponse = await fetch("/api/synthasize", {
-        method: "POST",
-        body: JSON.stringify({ message: { content: sentence, role: "assistant" } }),
-      });
-      if (!voiceResponse.ok) {
-        console.error(`Failed to synthesize sentence: ${sentence}`);
-        return null;
-      }
-      return await voiceResponse.arrayBuffer();
-    } catch (error) {
-      console.error(`Error synthesizing sentence: ${sentence}`, error);
-      return null;
-    }
+  const synthesizeSentence = useCallback(async (sentence: string): Promise<ArrayBuffer> => {
+    const voiceResponse = await fetch("/api/synthasize", {
+      method: "POST",
+      body: JSON.stringify({ message: { content: sentence, role: "assistant" } }),
+    });
+    return await voiceResponse.arrayBuffer();
   }, []);
 
   const playSentence = useCallback(async (audioBuffer: ArrayBuffer): Promise<void> => {
     if (!audioContextRef.current) return;
 
-    return new Promise((resolve, reject) => {
-      audioContextRef.current!.decodeAudioData(
-        audioBuffer,
-        (decodedBuffer) => {
-          if (sourceNodeRef.current) {
-            sourceNodeRef.current.stop();
-            sourceNodeRef.current.disconnect();
-          }
-
-          sourceNodeRef.current = audioContextRef.current!.createBufferSource();
-          sourceNodeRef.current.buffer = decodedBuffer;
-          sourceNodeRef.current.connect(audioContextRef.current!.destination);
-
-          sourceNodeRef.current.onended = () => resolve();
-          sourceNodeRef.current.start();
-        },
-        (error) => {
-          console.error("Error decoding audio data:", error);
-          reject(error);
+    return new Promise((resolve) => {
+      audioContextRef.current!.decodeAudioData(audioBuffer, (decodedBuffer) => {
+        if (sourceNodeRef.current) {
+          sourceNodeRef.current.stop();
+          sourceNodeRef.current.disconnect();
         }
-      );
+
+        sourceNodeRef.current = audioContextRef.current!.createBufferSource();
+        sourceNodeRef.current.buffer = decodedBuffer;
+        sourceNodeRef.current.connect(audioContextRef.current!.destination);
+
+        sourceNodeRef.current.onended = () => resolve();
+        sourceNodeRef.current.start();
+      });
     });
   }, []);
 
@@ -109,7 +93,7 @@ export default function ChatInput() {
         currentIndex += maxConcurrent;
 
         const audioBatch = await Promise.all(sentenceBatch.map(synthesizeSentence));
-        audioQueue.push(...audioBatch.filter((audio): audio is ArrayBuffer => audio !== null));
+        audioQueue.push(...audioBatch);
 
         if (!playingPromise) {
           playingPromise = playNextSentence();
@@ -125,11 +109,7 @@ export default function ChatInput() {
 
       const audio = audioQueue.shift();
       if (audio) {
-        try {
-          await playSentence(audio);
-        } catch (error) {
-          console.error("Error playing sentence:", error);
-        }
+        await playSentence(audio);
       }
 
       return playNextSentence();
