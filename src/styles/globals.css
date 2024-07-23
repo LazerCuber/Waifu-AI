@@ -15,7 +15,7 @@
 .background-image {
   width: 100%;
   height: 100%;
-  background-image: url('/two.avif');
+  background-image: url('/one.avif');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
