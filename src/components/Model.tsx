@@ -60,7 +60,7 @@ export default function Model() {
 
   const animateFrame = useCallback(() => {
     updateHeadPosition();
-    appRef.current?.renderer.render(appRef.current.stage); // Use renderer.render for better performance
+    appRef.current?.renderer.render(appRef.current.stage);
     animationFrameRef.current = requestAnimationFrame(animateFrame);
   }, [updateHeadPosition]);
 

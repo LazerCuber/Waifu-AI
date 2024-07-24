@@ -29,11 +29,16 @@ export default function ChatInput() {
     };
   }, []);
 
-  const synthesizeSentence = useCallback(async (sentence: string): Promise<ArrayBuffer> => {
+  const synthesizeSentence = useCallback(async (sentence: string): Promise<ArrayBuffer | null> => {
     const voiceResponse = await fetch("/api/synthasize", {
       method: "POST",
       body: JSON.stringify({ message: { content: sentence, role: "assistant" } }),
+      headers: { "Content-Type": "application/json" },
     });
+    if (!voiceResponse.ok) {
+      console.error("Failed to synthesize sentence:", voiceResponse.statusText);
+      return null;
+    }
     return await voiceResponse.arrayBuffer();
   }, []);
 
@@ -53,6 +58,9 @@ export default function ChatInput() {
 
         sourceNodeRef.current.onended = () => resolve();
         sourceNodeRef.current.start();
+      }, (error) => {
+        console.error("Error decoding audio data:", error);
+        resolve(); // Continue even if there is an error
       });
     });
   }, []);
@@ -71,6 +79,7 @@ export default function ChatInput() {
     const textResponse = await fetch("/api/chat", {
       method: "POST",
       body: JSON.stringify({ messages: newMessages }),
+      headers: { "Content-Type": "application/json" },
     });
     const textResult = (await textResponse.json()) as CoreMessage;
 
@@ -93,7 +102,7 @@ export default function ChatInput() {
         currentIndex += maxConcurrent;
 
         const audioBatch = await Promise.all(sentenceBatch.map(synthesizeSentence));
-        audioQueue.push(...audioBatch);
+        audioQueue.push(...audioBatch.filter(a => a !== null)); // Filter out null responses
 
         if (!playingPromise) {
           playingPromise = playNextSentence();
