@@ -21,6 +21,8 @@ export default function ChatInput() {
   const [input, setInput] = useState("");
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
+  const audioQueueRef = useRef<AudioBuffer[]>([]);
+  const isPlayingRef = useRef<boolean>(false);
 
   useEffect(() => {
     audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -29,41 +31,62 @@ export default function ChatInput() {
     };
   }, []);
 
-  const synthesizeSentence = useCallback(async (sentence: string): Promise<ArrayBuffer | null> => {
-    const voiceResponse = await fetch("/api/synthasize", {
-      method: "POST",
-      body: JSON.stringify({ message: { content: sentence, role: "assistant" } }),
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!voiceResponse.ok) {
-      console.error("Failed to synthesize sentence:", voiceResponse.statusText);
+  const synthesizeSentence = useCallback(async (sentence: string): Promise<AudioBuffer | null> => {
+    try {
+      const voiceResponse = await fetch("/api/synthasize", {
+        method: "POST",
+        body: JSON.stringify({ message: { content: sentence, role: "assistant" } }),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!voiceResponse.ok) {
+        throw new Error(`Failed to synthesize sentence: ${voiceResponse.statusText}`);
+      }
+      const arrayBuffer = await voiceResponse.arrayBuffer();
+      return await audioContextRef.current!.decodeAudioData(arrayBuffer);
+    } catch (error) {
+      console.error("Error in synthesizeSentence:", error);
       return null;
     }
-    return await voiceResponse.arrayBuffer();
   }, []);
 
-  const playSentence = useCallback(async (audioBuffer: ArrayBuffer): Promise<void> => {
-    if (!audioContextRef.current) return;
-
+  const playSentence = useCallback((audioBuffer: AudioBuffer): Promise<void> => {
     return new Promise((resolve) => {
-      audioContextRef.current!.decodeAudioData(audioBuffer, (decodedBuffer) => {
-        if (sourceNodeRef.current) {
-          sourceNodeRef.current.stop();
-          sourceNodeRef.current.disconnect();
-        }
+      if (!audioContextRef.current) {
+        resolve();
+        return;
+      }
 
-        sourceNodeRef.current = audioContextRef.current!.createBufferSource();
-        sourceNodeRef.current.buffer = decodedBuffer;
-        sourceNodeRef.current.connect(audioContextRef.current!.destination);
+      if (audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume();
+      }
 
-        sourceNodeRef.current.onended = () => resolve();
-        sourceNodeRef.current.start();
-      }, (error) => {
-        console.error("Error decoding audio data:", error);
-        resolve(); // Continue even if there is an error
-      });
+      if (sourceNodeRef.current) {
+        sourceNodeRef.current.stop();
+        sourceNodeRef.current.disconnect();
+      }
+
+      sourceNodeRef.current = audioContextRef.current.createBufferSource();
+      sourceNodeRef.current.buffer = audioBuffer;
+      sourceNodeRef.current.connect(audioContextRef.current.destination);
+
+      sourceNodeRef.current.onended = () => resolve();
+      sourceNodeRef.current.start();
     });
   }, []);
+
+  const playNextSentence = useCallback(async (): Promise<void> => {
+    if (audioQueueRef.current.length === 0) {
+      isPlayingRef.current = false;
+      return;
+    }
+
+    const audio = audioQueueRef.current.shift();
+    if (audio) {
+      await playSentence(audio);
+    }
+
+    return playNextSentence();
+  }, [playSentence]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -76,56 +99,38 @@ export default function ChatInput() {
     setMessages(newMessages);
     setInput("");
 
-    const textResponse = await fetch("/api/chat", {
-      method: "POST",
-      body: JSON.stringify({ messages: newMessages }),
-      headers: { "Content-Type": "application/json" },
-    });
-    const textResult = (await textResponse.json()) as CoreMessage;
+    try {
+      const textResponse = await fetch("/api/chat", {
+        method: "POST",
+        body: JSON.stringify({ messages: newMessages }),
+        headers: { "Content-Type": "application/json" },
+      });
+      const textResult = (await textResponse.json()) as CoreMessage;
 
-    setLastMessage(textResult);
-    setIsLoading(false);
-    setMessages([...newMessages, textResult]);
+      setLastMessage(textResult);
+      setIsLoading(false);
+      setMessages([...newMessages, textResult]);
 
-    if (typeof textResult.content !== 'string') return;
+      if (typeof textResult.content !== 'string') return;
 
-    const sentences = textResult.content.split(/(?<=\.|\?|!)/).map(s => s.trim()).filter(s => s.length > 0);
+      const sentences = textResult.content.split(/(?<=\.|\?|!)/).map(s => s.trim()).filter(s => s.length > 0);
 
-    const maxConcurrent = 3;
-    let currentIndex = 0;
-    const audioQueue: ArrayBuffer[] = [];
-    let playingPromise: Promise<void> | null = null;
-
-    const synthesizeAndPlay = async () => {
-      while (currentIndex < sentences.length) {
-        const sentenceBatch = sentences.slice(currentIndex, currentIndex + maxConcurrent);
-        currentIndex += maxConcurrent;
-
-        const audioBatch = await Promise.all(sentenceBatch.map(synthesizeSentence));
-        audioQueue.push(...audioBatch.filter(a => a !== null)); // Filter out null responses
-
-        if (!playingPromise) {
-          playingPromise = playNextSentence();
+      // Process sentences sequentially
+      for (const sentence of sentences) {
+        const audioBuffer = await synthesizeSentence(sentence);
+        if (audioBuffer) {
+          audioQueueRef.current.push(audioBuffer);
+          if (!isPlayingRef.current) {
+            isPlayingRef.current = true;
+            playNextSentence();
+          }
         }
       }
-    };
-
-    const playNextSentence = async (): Promise<void> => {
-      if (audioQueue.length === 0) {
-        playingPromise = null;
-        return;
-      }
-
-      const audio = audioQueue.shift();
-      if (audio) {
-        await playSentence(audio);
-      }
-
-      return playNextSentence();
-    };
-
-    synthesizeAndPlay();
-  }, [messages, input, setMessages, setLastMessage, setIsLoading, synthesizeSentence, playSentence]);
+    } catch (error) {
+      console.error("Error in handleSubmit:", error);
+      setIsLoading(false);
+    }
+  }, [messages, input, setMessages, setLastMessage, setIsLoading, synthesizeSentence, playNextSentence]);
 
   return (
     <div className="absolute bottom-10 h-10 w-full max-w-lg px-5">
