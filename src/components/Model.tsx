@@ -1,19 +1,19 @@
 "use client";
 
 import * as PIXI from "pixi.js";
-import React, { useEffect, useRef, useCallback, useMemo } from "react";
-import { useAtom } from "jotai";
+import React, { useEffect, useRef, useCallback, useMemo, memo } from "react";
+import { useAtomValue } from "jotai";
 import { lastMessageAtom, isLoadingAtom } from "~/atoms/ChatAtom";
 
 if (typeof window !== "undefined") (window as any).PIXI = PIXI;
 
-const SENSITIVITY = 0.95,SMOOTHNESS = 0.1,RECENTER_DELAY = 1000;
+const SENSITIVITY = 0.95, SMOOTHNESS = 0.1, RECENTER_DELAY = 1000;
 const easeOutQuint = (t: number): number => 1 - Math.pow(1 - t, 5);
 
-export default function Model() {
+const Model: React.FC = memo(() => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [lastMessage] = useAtom(lastMessageAtom);
-    const [isLoading] = useAtom(isLoadingAtom);
+    const lastMessage = useAtomValue(lastMessageAtom);
+    const isLoading = useAtomValue(isLoadingAtom);
     const modelRef = useRef<any>(null);
     const appRef = useRef<PIXI.Application | null>(null);
     const lastMouseMoveRef = useRef<number>(0);
@@ -84,14 +84,14 @@ export default function Model() {
             app.stage.addChild(model);
             model.anchor.set(0.5, 0.78);
             updateModelSize();
-            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mousemove', onMouseMove, { passive: true });
             animateFrame();
 
             const handleResize = () => {
                 app.renderer.resize(window.innerWidth, window.innerHeight);
                 updateModelSize();
             };
-            window.addEventListener('resize', handleResize);
+            window.addEventListener('resize', handleResize, { passive: true });
             return () => {
                 window.removeEventListener('resize', handleResize);
                 window.removeEventListener('mousemove', onMouseMove);
@@ -103,26 +103,25 @@ export default function Model() {
     }, [onMouseMove, updateModelSize, animateFrame]);
 
     useEffect(() => {
-        const lipSync = () => {
-            if (lastMessage?.role === 'assistant' && modelRef.current && !isLoading) {
-                const duration = lastMessage.content.length * 50;
-                const startTime = Date.now();
-                const animate = () => {
-                    const model = modelRef.current;
-                    if (!model) return;
-                    if (Date.now() - startTime < duration) {
-                        const openness = Math.sin((Date.now() - startTime) / 100) * 0.5 + 0.5;
-                        (model.internalModel.coreModel as any).setParameterValueById('ParamMouthOpenY', openness);
-                        requestAnimationFrame(animate);
-                    } else {
-                        (model.internalModel.coreModel as any).setParameterValueById('ParamMouthOpenY', 0);
-                    }
-                };
-                requestAnimationFrame(animate);
-            }
-        };
-        lipSync();
+        if (lastMessage?.role === 'assistant' && modelRef.current && !isLoading) {
+            const duration = lastMessage.content.length * 50;
+            const startTime = Date.now();
+            const animate = () => {
+                const model = modelRef.current;
+                if (!model) return;
+                if (Date.now() - startTime < duration) {
+                    const openness = Math.sin((Date.now() - startTime) / 100) * 0.5 + 0.5;
+                    (model.internalModel.coreModel as any).setParameterValueById('ParamMouthOpenY', openness);
+                    requestAnimationFrame(animate);
+                } else {
+                    (model.internalModel.coreModel as any).setParameterValueById('ParamMouthOpenY', 0);
+                }
+            };
+            requestAnimationFrame(animate);
+        }
     }, [lastMessage, isLoading]);
 
     return <canvas ref={canvasRef} style={{ width: '100vw', height: '100vh' }} />;
-}
+});
+
+export default Model;
