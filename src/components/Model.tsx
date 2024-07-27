@@ -1,14 +1,13 @@
 "use client";
 
 import * as PIXI from "pixi.js";
-import React, { useEffect, useRef, useCallback, useMemo, memo } from "react";
+import React, { useEffect, useRef, useCallback, memo } from "react";
 import { useAtomValue } from "jotai";
 import { lastMessageAtom, isLoadingAtom } from "~/atoms/ChatAtom";
 
 if (typeof window !== "undefined") (window as any).PIXI = PIXI;
 
 const SENSITIVITY = 0.95, SMOOTHNESS = 0.1, RECENTER_DELAY = 1000;
-const easeOutQuint = (t: number): number => 1 - Math.pow(1 - t, 5);
 
 const Model: React.FC = memo(() => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,9 +33,10 @@ const Model: React.FC = memo(() => {
         const app = appRef.current;
         if (!app?.view) return;
         const rect = app.view.getBoundingClientRect();
-        const normalizedX = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
-        const normalizedY = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
-        targetPositionRef.current = { x: normalizedX * SENSITIVITY, y: -normalizedY * SENSITIVITY };
+        targetPositionRef.current = {
+            x: ((event.clientX - rect.left) / rect.width - 0.5) * 2 * SENSITIVITY,
+            y: -(((event.clientY - rect.top) / rect.height - 0.5) * 2 * SENSITIVITY)
+        };
         lastMouseMoveRef.current = Date.now();
     }, []);
 
@@ -49,8 +49,7 @@ const Model: React.FC = memo(() => {
 
         if (timeSinceLastMove > RECENTER_DELAY) {
             const t = Math.min((timeSinceLastMove - RECENTER_DELAY) / 2000, 1);
-            const easedT = easeOutQuint(t);
-            target = { x: target.x * (1 - easedT), y: target.y * (1 - easedT) };
+            target = { x: target.x * (1 - t), y: target.y * (1 - t) };
         }
 
         currentPositionRef.current.x += (target.x - currentPositionRef.current.x) * SMOOTHNESS;
@@ -75,8 +74,6 @@ const Model: React.FC = memo(() => {
                 resolution: window.devicePixelRatio || 1,
                 autoDensity: true,
                 antialias: true,
-                powerPreference: "high-performance",
-                backgroundColor: 0x00000000,
             });
             appRef.current = app;
             const model = await Live2DModel.from("/model/vanilla/vanilla.model3.json");
@@ -91,7 +88,7 @@ const Model: React.FC = memo(() => {
                 app.renderer.resize(window.innerWidth, window.innerHeight);
                 updateModelSize();
             };
-            window.addEventListener('resize', handleResize, { passive: true });
+            window.addEventListener('resize', handleResize);
             return () => {
                 window.removeEventListener('resize', handleResize);
                 window.removeEventListener('mousemove', onMouseMove);
@@ -109,12 +106,13 @@ const Model: React.FC = memo(() => {
             const animate = () => {
                 const model = modelRef.current;
                 if (!model) return;
-                if (Date.now() - startTime < duration) {
-                    const openness = Math.sin((Date.now() - startTime) / 100) * 0.5 + 0.5;
-                    (model.internalModel.coreModel as any).setParameterValueById('ParamMouthOpenY', openness);
+                const elapsed = Date.now() - startTime;
+                if (elapsed < duration) {
+                    const openness = Math.sin(elapsed / 100) * 0.5 + 0.5;
+                    model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', openness);
                     requestAnimationFrame(animate);
                 } else {
-                    (model.internalModel.coreModel as any).setParameterValueById('ParamMouthOpenY', 0);
+                    model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', 0);
                 }
             };
             requestAnimationFrame(animate);
