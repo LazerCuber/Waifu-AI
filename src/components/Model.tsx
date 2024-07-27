@@ -30,9 +30,8 @@ const Model: React.FC = memo(() => {
     }, []);
 
     const onMouseMove = useCallback((event: MouseEvent) => {
-        const app = appRef.current;
-        if (!app?.view) return;
-        const rect = app.view.getBoundingClientRect();
+        if (!appRef.current?.view) return;
+        const rect = appRef.current.view.getBoundingClientRect();
         targetPositionRef.current = {
             x: ((event.clientX - rect.left) / rect.width - 0.5) * 2 * SENSITIVITY,
             y: -(((event.clientY - rect.top) / rect.height - 0.5) * 2 * SENSITIVITY)
@@ -66,6 +65,7 @@ const Model: React.FC = memo(() => {
     useEffect(() => {
         const init = async () => {
             if (!canvasRef.current || typeof window === "undefined") return;
+
             const { Live2DModel } = await import("pixi-live2d-display/cubism4");
             const app = new PIXI.Application({
                 view: canvasRef.current,
@@ -76,6 +76,7 @@ const Model: React.FC = memo(() => {
                 antialias: true,
             });
             appRef.current = app;
+
             const model = await Live2DModel.from("/model/vanilla/vanilla.model3.json");
             modelRef.current = model;
             app.stage.addChild(model);

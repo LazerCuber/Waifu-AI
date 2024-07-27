@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import ChatInput from "~/components/ChatInput";
 
-// Dynamic imports without Suspense to minimize blocking
+// aight bruh gotta minimize blocking with dynamic imports
 const ChatterBox = dynamic(() => import("~/components/ChatterBox"), { ssr: false });
 const Model = dynamic(() => import("~/components/Model"), { ssr: false });
 
@@ -22,11 +22,11 @@ export default function Page() {
   useEffect(() => {
     const script = document.createElement('script');
     script.src = '/live2dcubismcore.min.js';
-    script.async = true; // Load script asynchronously
+    script.async = true; // asynchronous script loading
     document.body.appendChild(script);
     
     return () => {
-      document.body.removeChild(script); // Cleanup on unmount
+      document.body.removeChild(script); // cleanup
     };
   }, []);
 
