@@ -1,13 +1,12 @@
-## Credits to [unteifu](https://github.com/unteifu/wAIfu) for creating this (Bro created this whole thing!)
+## Credits to the [original repo](https://github.com/unteifu/wAIfu) 
 
-# What is this for the?:
+# So what is this for?:
 - Some more performance optimizations
 - Latency improvments
 - Live2d lag fix
 - Speech to Text coming soon
 - Moving background
 - Live2d Mouth working
-
 
 ### Requirements (same with the original repo) 
 * node
@@ -22,7 +21,7 @@
     or if you have the GitHub CLI installed
 
     ```sh
-   gh repo clone unteifu/wAIfu
+   gh repo clone LazerCuber/Waifu-AI
     ```
 2. Install NPM packages
     ```sh
