@@ -1,165 +1,126 @@
 "use client";
 
 import * as PIXI from "pixi.js";
-import React, { useEffect, useRef, useState } from "react";
-import type { Live2DModel as Live2DModelType } from "pixi-live2d-display/cubism4";
-import { useAtom } from "jotai";
+import React, { useEffect, useRef, useCallback, memo } from "react";
+import { useAtomValue } from "jotai";
 import { lastMessageAtom, isLoadingAtom } from "~/atoms/ChatAtom";
 
-declare global {
-  interface Window {
-    PIXI: typeof PIXI;
-  }
-}
-if (typeof window !== "undefined") {
-  window.PIXI = PIXI;
-}
+if (typeof window !== "undefined") (window as any).PIXI = PIXI;
 
-const easeOutQuint = (t: number): number => 1 - Math.pow(1 - t, 5);
+const SENSITIVITY = 0.95, SMOOTHNESS = 0.1, RECENTER_DELAY = 1000;
 
-interface Vector2D {
-  x: number;
-  y: number;
-}
+const Model: React.FC = memo(() => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const lastMessage = useAtomValue(lastMessageAtom);
+    const isLoading = useAtomValue(isLoadingAtom);
+    const modelRef = useRef<any>(null);
+    const appRef = useRef<PIXI.Application | null>(null);
+    const lastMouseMoveRef = useRef<number>(0);
+    const targetPositionRef = useRef({ x: 0, y: 0 });
+    const currentPositionRef = useRef({ x: 0, y: 0 });
+    const animationFrameRef = useRef<number | null>(null);
 
-export default function Model() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const modelRef = useRef<Live2DModelType | null>(null);
-  const [lastMessage] = useAtom(lastMessageAtom);
-  const [isLoading] = useAtom(isLoadingAtom);
-  const [isLipSyncing, setIsLipSyncing] = useState(false);
-  const lastMouseMoveRef = useRef<number>(0);
-  const targetPositionRef = useRef<Vector2D>({ x: 0, y: 0 });
-  const currentPositionRef = useRef<Vector2D>({ x: 0, y: 0 });
-  const appRef = useRef<PIXI.Application | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const init = async () => {
-      if (!canvasRef.current || typeof window === "undefined") return;
-
-      const { Live2DModel } = await import("pixi-live2d-display/cubism4");
-
-      const app = new PIXI.Application({
-        view: canvasRef.current,
-        transparent: true,
-        resizeTo: window,
-        resolution: window.devicePixelRatio || 1,
-        autoDensity: true,
-        antialias: true,
-      });
-      appRef.current = app;
-
-      const model: Live2DModelType = await Live2DModel.from("/model/vanilla/vanilla.model3.json");
-      modelRef.current = model;
-
-      app.stage.addChild(model);
-      model.anchor.set(0.5, 0.78);
-
-      const updateModelSize = () => {
-        if (!model || !app.screen) return;
+    const updateModelSize = useCallback(() => {
+        const model = modelRef.current;
+        const app = appRef.current;
+        if (!model || !app?.screen) return;
         const scale = Math.min(app.screen.width / model.width, app.screen.height / model.height);
-        model.scale.set(scale * 1);
+        model.scale.set(scale);
         model.position.set(app.screen.width / 2, app.screen.height * 0.85);
-      };
+    }, []);
 
-      updateModelSize();
-
-      const sensitivity = 0.95;
-      const smoothness = 0.1;
-
-      const onMouseMove = (event: MouseEvent) => {
-        if (!model || !app.screen || !app.view) return;
-
-        const rect = app.view.getBoundingClientRect();
-        const normalizedX = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
-        const normalizedY = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
-
+    const onMouseMove = useCallback((event: MouseEvent) => {
+        if (!appRef.current?.view) return;
+        const rect = appRef.current.view.getBoundingClientRect();
         targetPositionRef.current = {
-          x: normalizedX * sensitivity,
-          y: -normalizedY * sensitivity
+            x: ((event.clientX - rect.left) / rect.width - 0.5) * 2 * SENSITIVITY,
+            y: -(((event.clientY - rect.top) / rect.height - 0.5) * 2 * SENSITIVITY)
         };
-
         lastMouseMoveRef.current = Date.now();
-      };
+    }, []);
 
-      const updateHeadPosition = () => {
+    const updateHeadPosition = useCallback(() => {
+        const model = modelRef.current;
         if (!model) return;
-
         const now = Date.now();
         const timeSinceLastMove = now - lastMouseMoveRef.current;
-        const recenterDelay = 1000;
+        let target = targetPositionRef.current;
 
-        let target: Vector2D;
-        if (timeSinceLastMove > recenterDelay) {
-          const t = Math.min((timeSinceLastMove - recenterDelay) / 2000, 1);
-          const easedT = easeOutQuint(t);
-          target = {
-            x: targetPositionRef.current.x * (1 - easedT),
-            y: targetPositionRef.current.y * (1 - easedT)
-          };
-        } else {
-          target = targetPositionRef.current;
+        if (timeSinceLastMove > RECENTER_DELAY) {
+            const t = Math.min((timeSinceLastMove - RECENTER_DELAY) / 2000, 1);
+            target = { x: target.x * (1 - t), y: target.y * (1 - t) };
         }
 
-        currentPositionRef.current.x += (target.x - currentPositionRef.current.x) * smoothness;
-        currentPositionRef.current.y += (target.y - currentPositionRef.current.y) * smoothness;
-
+        currentPositionRef.current.x += (target.x - currentPositionRef.current.x) * SMOOTHNESS;
+        currentPositionRef.current.y += (target.y - currentPositionRef.current.y) * SMOOTHNESS;
         model.internalModel.focusController?.focus(currentPositionRef.current.x, currentPositionRef.current.y);
+    }, []);
 
-        animationFrameRef.current = requestAnimationFrame(updateHeadPosition);
-      };
+    const animateFrame = useCallback(() => {
+        updateHeadPosition();
+        appRef.current?.renderer.render(appRef.current.stage);
+        animationFrameRef.current = requestAnimationFrame(animateFrame);
+    }, [updateHeadPosition]);
 
-      app.view.addEventListener('mousemove', onMouseMove);
-      updateHeadPosition();
+    useEffect(() => {
+        const init = async () => {
+            if (!canvasRef.current || typeof window === "undefined") return;
 
-      const handleResize = () => {
-        if (!app) return;
-        app.renderer.resize(window.innerWidth, window.innerHeight);
-        updateModelSize();
-      };
+            const { Live2DModel } = await import("pixi-live2d-display/cubism4");
+            const app = new PIXI.Application({
+                view: canvasRef.current,
+                transparent: true,
+                resizeTo: window,
+                resolution: window.devicePixelRatio || 1,
+                autoDensity: true,
+                antialias: true,
+            });
+            appRef.current = app;
 
-      window.addEventListener('resize', handleResize);
+            const model = await Live2DModel.from("/model/vanilla/vanilla.model3.json");
+            modelRef.current = model;
+            app.stage.addChild(model);
+            model.anchor.set(0.5, 0.78);
+            updateModelSize();
+            window.addEventListener('mousemove', onMouseMove, { passive: true });
+            animateFrame();
 
-      return () => {
-        window.removeEventListener('resize', handleResize);
-        app.view.removeEventListener('mousemove', onMouseMove);
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
-        app.destroy(true, { children: true, texture: true, baseTexture: true });
-      };
-    };
-
-    init();
-  }, []);
-
-  useEffect(() => {
-    const lipSync = async () => {
-      if (lastMessage && lastMessage.role === 'assistant' && modelRef.current && !isLoading) {
-        setIsLipSyncing(true);
-        const duration = lastMessage.content.length * 50;
-        const startTime = Date.now();
-
-        const animate = () => {
-          if (modelRef.current && Date.now() - startTime < duration) {
-            const openness = Math.sin((Date.now() - startTime) / 100) * 0.5 + 0.5;
-            (modelRef.current.internalModel.coreModel as any).setParameterValueById('ParamMouthOpenY', openness);
-            requestAnimationFrame(animate);
-          } else {
-            if (modelRef.current) {
-              (modelRef.current.internalModel.coreModel as any).setParameterValueById('ParamMouthOpenY', 0);
-            }
-            setIsLipSyncing(false);
-          }
+            const handleResize = () => {
+                app.renderer.resize(window.innerWidth, window.innerHeight);
+                updateModelSize();
+            };
+            window.addEventListener('resize', handleResize);
+            return () => {
+                window.removeEventListener('resize', handleResize);
+                window.removeEventListener('mousemove', onMouseMove);
+                if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+                app.destroy(true, { children: true, texture: true, baseTexture: true });
+            };
         };
+        init();
+    }, [onMouseMove, updateModelSize, animateFrame]);
 
-        animate();
-      }
-    };
+    useEffect(() => {
+        if (lastMessage?.role === 'assistant' && modelRef.current && !isLoading) {
+            const duration = lastMessage.content.length * 50;
+            const startTime = Date.now();
+            const animate = () => {
+                const model = modelRef.current;
+                if (!model) return;
+                const elapsed = Date.now() - startTime;
+                if (elapsed < duration) {
+                    const openness = Math.sin(elapsed / 100) * 0.5 + 0.5;
+                    model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', openness);
+                    requestAnimationFrame(animate);
+                } else {
+                    model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', 0);
+                }
+            };
+            requestAnimationFrame(animate);
+        }
+    }, [lastMessage, isLoading]);
 
-    lipSync();
-  }, [lastMessage, isLoading]);
+    return <canvas ref={canvasRef} style={{ width: '100vw', height: '100vh' }} />;
+});
 
-  return <canvas ref={canvasRef}></canvas>;
-}
+export default Model;
