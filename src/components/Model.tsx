@@ -23,37 +23,38 @@ const Model: React.FC = memo(() => {
     const updateModelSize = useCallback(() => {
         const model = modelRef.current;
         const app = appRef.current;
-        if (!model || !app?.screen) return;
-        const scale = Math.min(app.screen.width / model.width, app.screen.height / model.height);
-        model.scale.set(scale);
-        model.position.set(app.screen.width / 2, app.screen.height * 0.85);
+        if (model && app?.screen) {
+            const scale = Math.min(app.screen.width / model.width, app.screen.height / model.height);
+            model.scale.set(scale);
+            model.position.set(app.screen.width / 2, app.screen.height * 0.85);
+        }
     }, []);
 
     const onMouseMove = useCallback((event: MouseEvent) => {
-        if (!appRef.current?.view) return;
-        const rect = appRef.current.view.getBoundingClientRect();
-        targetPositionRef.current = {
-            x: ((event.clientX - rect.left) / rect.width - 0.5) * 2 * SENSITIVITY,
-            y: -(((event.clientY - rect.top) / rect.height - 0.5) * 2 * SENSITIVITY)
-        };
-        lastMouseMoveRef.current = Date.now();
+        if (appRef.current?.view) {
+            const rect = appRef.current.view.getBoundingClientRect();
+            targetPositionRef.current = {
+                x: ((event.clientX - rect.left) / rect.width - 0.5) * 2 * SENSITIVITY,
+                y: -(((event.clientY - rect.top) / rect.height - 0.5) * 2 * SENSITIVITY)
+            };
+            lastMouseMoveRef.current = Date.now();
+        }
     }, []);
 
     const updateHeadPosition = useCallback(() => {
         const model = modelRef.current;
-        if (!model) return;
-        const now = Date.now();
-        const timeSinceLastMove = now - lastMouseMoveRef.current;
-        let target = targetPositionRef.current;
+        if (model) {
+            const now = Date.now();
+            const timeSinceLastMove = now - lastMouseMoveRef.current;
+            const target = timeSinceLastMove > RECENTER_DELAY 
+                ? { x: targetPositionRef.current.x * (1 - Math.min((timeSinceLastMove - RECENTER_DELAY) / 2000, 1)),
+                    y: targetPositionRef.current.y * (1 - Math.min((timeSinceLastMove - RECENTER_DELAY) / 2000, 1)) }
+                : targetPositionRef.current;
 
-        if (timeSinceLastMove > RECENTER_DELAY) {
-            const t = Math.min((timeSinceLastMove - RECENTER_DELAY) / 2000, 1);
-            target = { x: target.x * (1 - t), y: target.y * (1 - t) };
+            currentPositionRef.current.x += (target.x - currentPositionRef.current.x) * SMOOTHNESS;
+            currentPositionRef.current.y += (target.y - currentPositionRef.current.y) * SMOOTHNESS;
+            model.internalModel.focusController?.focus(currentPositionRef.current.x, currentPositionRef.current.y);
         }
-
-        currentPositionRef.current.x += (target.x - currentPositionRef.current.x) * SMOOTHNESS;
-        currentPositionRef.current.y += (target.y - currentPositionRef.current.y) * SMOOTHNESS;
-        model.internalModel.focusController?.focus(currentPositionRef.current.x, currentPositionRef.current.y);
     }, []);
 
     const animateFrame = useCallback(() => {
@@ -82,6 +83,7 @@ const Model: React.FC = memo(() => {
             app.stage.addChild(model);
             model.anchor.set(0.5, 0.78);
             updateModelSize();
+
             window.addEventListener('mousemove', onMouseMove, { passive: true });
             animateFrame();
 
@@ -90,6 +92,7 @@ const Model: React.FC = memo(() => {
                 updateModelSize();
             };
             window.addEventListener('resize', handleResize);
+
             return () => {
                 window.removeEventListener('resize', handleResize);
                 window.removeEventListener('mousemove', onMouseMove);
@@ -106,14 +109,11 @@ const Model: React.FC = memo(() => {
             const startTime = Date.now();
             const animate = () => {
                 const model = modelRef.current;
-                if (!model) return;
-                const elapsed = Date.now() - startTime;
-                if (elapsed < duration) {
-                    const openness = Math.sin(elapsed / 100) * 0.5 + 0.5;
-                    model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', openness);
-                    requestAnimationFrame(animate);
-                } else {
-                    model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', 0);
+                if (model) {
+                    const elapsed = Date.now() - startTime;
+                    model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', 
+                        elapsed < duration ? Math.sin(elapsed / 100) * 0.5 + 0.5 : 0);
+                    if (elapsed < duration) requestAnimationFrame(animate);
                 }
             };
             requestAnimationFrame(animate);
