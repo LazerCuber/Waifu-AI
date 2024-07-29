@@ -5,8 +5,8 @@ import dynamic from 'next/dynamic';
 import ChatInput from "~/components/ChatInput";
 
 // aight bruh gotta minimize blocking with dynamic imports
-const ChatterBox = dynamic(() => import("~/components/ChatterBox"), { ssr: false });
-const Model = dynamic(() => import("~/components/Model"), { ssr: false });
+const ChatterBox = dynamic(() => import("~/components/ChatterBox"), { ssr: false, loading: () => null });
+const Model = dynamic(() => import("~/components/Model"), { ssr: false, loading: () => null });
 
 const Background = () => (
   <div className="absolute inset-0 z-0 overflow-hidden">
@@ -24,22 +24,22 @@ export default function Page() {
   useEffect(() => {
     const script = document.createElement('script');
     script.src = '/live2dcubismcore.min.js';
-    script.async = true; // asynchronous script loading
+    script.async = true; 
     script.onload = () => setLive2dLoaded(true);
     document.body.appendChild(script);
     
     return () => {
-      document.body.removeChild(script); // cleanup
+      document.body.removeChild(script); 
     };
   }, []);
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
       <Background />
-      <div className="relative z-20 flex flex-col items-center justify-center w-full h-full">
+      <div className="relative z-10 flex flex-col items-center justify-center w-full h-full"> 
+        <ChatInput />
         {live2dLoaded && <ChatterBox />}
         {live2dLoaded && <Model />}
-        <ChatInput />
       </div>
     </main>
   );
