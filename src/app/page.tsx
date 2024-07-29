@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import ChatInput from "~/components/ChatInput";
 
@@ -19,10 +19,13 @@ const Background = () => (
 );
 
 export default function Page() {
+  const [live2dLoaded, setLive2dLoaded] = useState(false);
+
   useEffect(() => {
     const script = document.createElement('script');
     script.src = '/live2dcubismcore.min.js';
     script.async = true; // asynchronous script loading
+    script.onload = () => setLive2dLoaded(true);
     document.body.appendChild(script);
     
     return () => {
@@ -34,8 +37,8 @@ export default function Page() {
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
       <Background />
       <div className="relative z-20 flex flex-col items-center justify-center w-full h-full">
-        <ChatterBox />
-        <Model />
+        {live2dLoaded && <ChatterBox />}
+        {live2dLoaded && <Model />}
         <ChatInput />
       </div>
     </main>
