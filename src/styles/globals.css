@@ -6,10 +6,11 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 300%;
+  width: 300%; /* Use percentage for dynamic scaling */
   height: 100%;
   display: flex;
-  /*animation: slide-left 60s linear infinite;*/
+  /* animation: slide-left 60s linear infinite; /* Enable animation */
+  will-change: transform; /* Tell the browser to optimize for transform changes */
 }
 
 .background-image {
@@ -26,6 +27,6 @@
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-66.66%);
+    transform: translateX(-66.66%); /* Adjust percentage for desired speed */
   }
 }
