@@ -37,9 +37,13 @@ export default function Page() {
       <Background />
       <div className="relative z-10 flex flex-col items-center justify-center w-full h-full" style={{ position: 'relative', height: '100vh' }}> 
         <ChatInput />
-        <div style={{ height: 'calc(100vh - 60px)' }}> {/* Adjust 60px to match ChatInput height */}
-          {live2dLoaded && <ChatterBox />}
-          {live2dLoaded && <Model />}
+        <div style={{ height: 'calc(100vh)' }}>
+          {live2dLoaded && (
+            <>
+              <ChatterBox />
+              <Model />
+            </>
+          )}
         </div>
       </div>
     </main>
