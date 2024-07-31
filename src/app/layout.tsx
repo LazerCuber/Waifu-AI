@@ -6,7 +6,7 @@ import { Metadata } from 'next';
 export const metadata: Metadata = {
   title: "Waifu.AI",
   icons: {
-    icon: "/favicon.ico",
+    icon: "./static/favicon.ico",
   },
 };
 
