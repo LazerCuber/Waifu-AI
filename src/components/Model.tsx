@@ -75,7 +75,7 @@ const Model: React.FC = memo(() => {
             const Live2DModel = await preloadModules();
             const app = new PIXI.Application({
                 view: canvasRef.current,
-                transparent: true,
+                backgroundAlpha: 0,
                 resizeTo: window,
                 resolution: window.devicePixelRatio || 1,
                 autoDensity: true,
