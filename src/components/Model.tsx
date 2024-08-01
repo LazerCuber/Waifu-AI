@@ -9,6 +9,11 @@ if (typeof window !== "undefined") (window as any).PIXI = PIXI;
 
 const SENSITIVITY = 0.95, SMOOTHNESS = 0.1, RECENTER_DELAY = 1000;
 
+const preloadModules = async () => {
+    const { Live2DModel } = await import("pixi-live2d-display/cubism4");
+    return Live2DModel;
+}
+
 const Model: React.FC = memo(() => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const lastMessage = useAtomValue(lastMessageAtom);
@@ -67,7 +72,7 @@ const Model: React.FC = memo(() => {
         const init = async () => {
             if (!canvasRef.current || typeof window === "undefined") return;
 
-            const { Live2DModel } = await import("pixi-live2d-display/cubism4");
+            const Live2DModel = await preloadModules();
             const app = new PIXI.Application({
                 view: canvasRef.current,
                 transparent: true,
