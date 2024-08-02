@@ -115,7 +115,6 @@ export default function ChatInput() {
 
       const sentences = textResult.content.split(/(?<=\.|\?|!)/).map(s => s.trim()).filter(s => s.length > 0);
 
-      // Process sentences sequentially
       for (const sentence of sentences) {
         const audioBuffer = await synthesizeSentence(sentence);
         if (audioBuffer) {
