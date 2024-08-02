@@ -23,7 +23,7 @@ export default function Page() {
   useEffect(() => {
     const script = document.createElement('script');
     script.src = '/live2dcubismcore.min.js';
-    script.async = true; 
+    script.defer = true; 
     script.onload = () => setLive2dLoaded(true);
     document.body.appendChild(script);
     

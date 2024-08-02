@@ -72,9 +72,8 @@ const Model: React.FC = memo(() => {
 
     useEffect(() => {
         const init = async () => {
+            await preloadModules(); // Preload the modules first
             if (!canvasRef.current) return;
-
-            await preloadModules(); // Ensure Live2DModel is loaded
 
             const app = new PIXI.Application({
                 view: canvasRef.current,
@@ -86,12 +85,10 @@ const Model: React.FC = memo(() => {
             });
             appRef.current = app;
 
-            if (Live2DModel) {
-                modelRef.current = await Live2DModel.from("/model/vanilla/vanilla.model3.json");
-                app.stage.addChild(modelRef.current);
-                modelRef.current.anchor.set(0.5, 0.78);
-                updateModelSize();
-            }
+            modelRef.current = await Live2DModel.from("/model/vanilla/vanilla.model3.json");
+            app.stage.addChild(modelRef.current);
+            modelRef.current.anchor.set(0.5, 0.78);
+            updateModelSize();
 
             window.addEventListener('mousemove', onMouseMove, { passive: true });
             animateFrame();
