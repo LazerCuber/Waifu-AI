@@ -37,7 +37,7 @@ export default function Page() {
       <Background />
       <div className="relative z-10 flex flex-col items-center justify-center w-full h-full" style={{ position: 'relative', height: '100vh' }}> 
         <ChatInput />
-        <div style={{ height: 'calc(100vh)' }}>
+        <div style={{ height: 'calc(100vh)', display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
           {live2dLoaded && (
             <>
               <ChatterBox />
