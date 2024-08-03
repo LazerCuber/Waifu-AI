@@ -6,27 +6,17 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 300%; /* Use percentage for dynamic scaling */
+  width: 100%; /* Use percentage for dynamic scaling */
   height: 100%;
   display: flex;
-  /* animation: slide-left 60s linear infinite; /* Enable animation */
-  will-change: transform; /* Tell the browser to optimize for transform changes */
+  will-change: transform; /* Optimize for transform changes */
 }
 
 .background-image {
-  width: 100%;
+  flex: 0 0 100%; /* Use flex to enforce sizing */
   height: 100%;
   background-image: url('/one.avif');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-}
-
-@keyframes slide-left {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-66.66%); /* Adjust percentage for desired speed */
-  }
 }
