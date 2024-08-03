@@ -1,5 +1,4 @@
 "use client";
-
 import * as PIXI from "pixi.js";
 import React, { useEffect, useRef, useCallback, memo } from "react";
 import { useAtomValue } from "jotai";
@@ -10,16 +9,16 @@ if (typeof window !== "undefined") (window as any).PIXI = PIXI;
 const SENSITIVITY = 0.95, SMOOTHNESS = 0.1, RECENTER_DELAY = 1000;
 let Live2DModel: any;
 
-async function preloadModules() {
+const preloadModules = async () => {
   Live2DModel = (await import("pixi-live2d-display/cubism4")).Live2DModel;
-}
+};
 
 const Model: React.FC = memo(() => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastMessage = useAtomValue(lastMessageAtom);
   const modelRef = useRef<any>(null);
   const appRef = useRef<PIXI.Application | null>(null);
-  const lastMouseMoveRef = useRef<number>(0);
+  const lastMouseMoveRef = useRef(0);
   const targetPositionRef = useRef({ x: 0, y: 0 });
   const currentPositionRef = useRef({ x: 0, y: 0 });
   const animationFrameRef = useRef<number | null>(null);
@@ -69,7 +68,7 @@ const Model: React.FC = memo(() => {
   }, [updateHeadPosition]);
 
   useEffect(() => {
-    const init = async () => {
+    (async () => {
       await preloadModules();
       if (!canvasRef.current) return;
 
@@ -102,8 +101,7 @@ const Model: React.FC = memo(() => {
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         app.destroy(true, { children: true, texture: true, baseTexture: true });
       };
-    };
-    init();
+    })();
   }, [onMouseMove, updateModelSize, animateFrame]);
 
   useEffect(() => {
