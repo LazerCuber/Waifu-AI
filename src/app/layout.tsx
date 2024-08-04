@@ -17,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <Provider>
-      <html lang="en" className={`${GeistSans.variable}`}>
+      <html className={GeistSans.variable}>
         <body>{children}</body>
       </html>
     </Provider>
