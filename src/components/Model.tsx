@@ -110,7 +110,7 @@ const Model: React.FC = memo(() => {
       const startTime = Date.now();
       const animate = () => {
         const elapsed = Date.now() - startTime;
-        modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', 
+        modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY',
           elapsed < duration ? Math.sin(elapsed / 100) * 0.5 + 0.5 : 0);
         if (elapsed < duration) requestAnimationFrame(animate);
       };
