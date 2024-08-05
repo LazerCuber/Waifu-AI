@@ -49,7 +49,7 @@ const Model: React.FC = memo(() => {
     if (model) {
       const now = Date.now();
       const timeSinceLastMove = now - lastMouseMoveRef.current;
-      const factor = timeSinceLastMove > RECENTER_DELAY ? Math.min((timeSinceLastMove - RECENTER_DELAY) / 2000, 1) : 0;
+      const factor = Math.max(0, Math.min((timeSinceLastMove - RECENTER_DELAY) / 2000, 1));
       const target = {
         x: targetPositionRef.current.x * (1 - factor),
         y: targetPositionRef.current.y * (1 - factor),
@@ -110,7 +110,7 @@ const Model: React.FC = memo(() => {
       const startTime = Date.now();
       const animate = () => {
         const elapsed = Date.now() - startTime;
-        modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY',
+        modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', 
           elapsed < duration ? Math.sin(elapsed / 100) * 0.5 + 0.5 : 0);
         if (elapsed < duration) requestAnimationFrame(animate);
       };
@@ -118,7 +118,7 @@ const Model: React.FC = memo(() => {
     }
   }, [lastMessage]);
 
-  return <canvas ref={canvasRef} style={{ width: '100vw', height: '100vh' }} />;
+  return <canvas ref={canvasRef} style={{ width: '100vw', height: '100vh', display: 'block' }} />;
 });
 
 export default Model;
