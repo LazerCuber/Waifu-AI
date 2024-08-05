@@ -7,10 +7,10 @@ import { lastMessageAtom } from "~/atoms/ChatAtom";
 if (typeof window !== "undefined") (window as any).PIXI = PIXI;
 
 const SENSITIVITY = 0.95, SMOOTHNESS = 0.1, RECENTER_DELAY = 1000;
+let Live2DModel: any;
 
-const loadLive2DModel = async () => {
-  const { Live2DModel } = await import("pixi-live2d-display/cubism4");
-  return Live2DModel;
+const preloadModules = async () => {
+  Live2DModel = (await import("pixi-live2d-display/cubism4")).Live2DModel;
 };
 
 const Model: React.FC = memo(() => {
@@ -69,7 +69,7 @@ const Model: React.FC = memo(() => {
 
   useEffect(() => {
     (async () => {
-      const Live2DModel = await loadLive2DModel();
+      await preloadModules();
       if (!canvasRef.current) return;
 
       const app = new PIXI.Application({
