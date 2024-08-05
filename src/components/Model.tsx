@@ -1,6 +1,6 @@
 "use client";
 import * as PIXI from "pixi.js";
-import React, { useEffect, useRef, useCallback, memo } from "react";
+import React, { useEffect, useRef, useCallback, memo, useState } from "react";
 import { useAtomValue } from "jotai";
 import { lastMessageAtom } from "~/atoms/ChatAtom";
 
@@ -22,6 +22,7 @@ const Model: React.FC = memo(() => {
   const targetPositionRef = useRef({ x: 0, y: 0 });
   const currentPositionRef = useRef({ x: 0, y: 0 });
   const animationFrameRef = useRef<number | null>(null);
+  const [isModelLoaded, setIsModelLoaded] = useState(false);
 
   const updateModelSize = useCallback(() => {
     const model = modelRef.current;
@@ -95,6 +96,8 @@ const Model: React.FC = memo(() => {
       };
       window.addEventListener('resize', handleResize);
 
+      setIsModelLoaded(true);
+
       return () => {
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('mousemove', onMouseMove);
@@ -105,7 +108,7 @@ const Model: React.FC = memo(() => {
   }, [onMouseMove, updateModelSize, animateFrame]);
 
   useEffect(() => {
-    if (lastMessage?.role === 'assistant' && modelRef.current) {
+    if (lastMessage?.role === 'assistant' && modelRef.current && isModelLoaded) {
       const duration = lastMessage.content.length * 50;
       const startTime = Date.now();
       const animate = () => {
@@ -116,7 +119,7 @@ const Model: React.FC = memo(() => {
       };
       requestAnimationFrame(animate);
     }
-  }, [lastMessage]);
+  }, [lastMessage, isModelLoaded]);
 
   return <canvas ref={canvasRef} style={{ width: '100vw', height: '100vh' }} />;
 });
