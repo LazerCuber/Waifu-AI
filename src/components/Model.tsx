@@ -1,6 +1,6 @@
 "use client";
 import * as PIXI from "pixi.js";
-import React, { useEffect, useRef, useCallback, memo, useState } from "react";
+import React, { useEffect, useRef, useCallback, memo } from "react";
 import { useAtomValue } from "jotai";
 import { lastMessageAtom } from "~/atoms/ChatAtom";
 
@@ -16,7 +16,6 @@ const preloadModules = async () => {
 const Model: React.FC = memo(() => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastMessage = useAtomValue(lastMessageAtom);
-  const [isLoaded, setIsLoaded] = useState(false);
   const modelRef = useRef<any>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const lastMouseMoveRef = useRef(0);
@@ -69,12 +68,9 @@ const Model: React.FC = memo(() => {
   }, [updateHeadPosition]);
 
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
-
-    const initializeModel = async () => {
-      if (!canvasRef.current) return;
-
+    (async () => {
       await preloadModules();
+      if (!canvasRef.current) return;
 
       const app = new PIXI.Application({
         view: canvasRef.current,
@@ -99,23 +95,17 @@ const Model: React.FC = memo(() => {
       };
       window.addEventListener('resize', handleResize);
 
-      setIsLoaded(true);
-
-      cleanup = () => {
+      return () => {
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('mousemove', onMouseMove);
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         app.destroy(true, { children: true, texture: true, baseTexture: true });
       };
-    };
-
-    initializeModel();
-
-    return () => cleanup?.();
+    })();
   }, [onMouseMove, updateModelSize, animateFrame]);
 
   useEffect(() => {
-    if (lastMessage?.role === 'assistant' && modelRef.current && isLoaded) {
+    if (lastMessage?.role === 'assistant' && modelRef.current) {
       const duration = lastMessage.content.length * 50;
       const startTime = Date.now();
       const animate = () => {
@@ -126,7 +116,7 @@ const Model: React.FC = memo(() => {
       };
       requestAnimationFrame(animate);
     }
-  }, [lastMessage, isLoaded]);
+  }, [lastMessage]);
 
   return <canvas ref={canvasRef} style={{ width: '100vw', height: '100vh' }} />;
 });
