@@ -16,13 +16,13 @@ const preloadModules = async () => {
 const Model: React.FC = memo(() => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastMessage = useAtomValue(lastMessageAtom);
+  const [isLoaded, setIsLoaded] = useState(false);
   const modelRef = useRef<any>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const lastMouseMoveRef = useRef(0);
   const targetPositionRef = useRef({ x: 0, y: 0 });
   const currentPositionRef = useRef({ x: 0, y: 0 });
   const animationFrameRef = useRef<number | null>(null);
-  const [isModelLoaded, setIsModelLoaded] = useState(false);
 
   const updateModelSize = useCallback(() => {
     const model = modelRef.current;
@@ -69,9 +69,12 @@ const Model: React.FC = memo(() => {
   }, [updateHeadPosition]);
 
   useEffect(() => {
-    (async () => {
-      await preloadModules();
+    let cleanup: (() => void) | undefined;
+
+    const initializeModel = async () => {
       if (!canvasRef.current) return;
+
+      await preloadModules();
 
       const app = new PIXI.Application({
         view: canvasRef.current,
@@ -96,19 +99,23 @@ const Model: React.FC = memo(() => {
       };
       window.addEventListener('resize', handleResize);
 
-      setIsModelLoaded(true);
+      setIsLoaded(true);
 
-      return () => {
+      cleanup = () => {
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('mousemove', onMouseMove);
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         app.destroy(true, { children: true, texture: true, baseTexture: true });
       };
-    })();
+    };
+
+    initializeModel();
+
+    return () => cleanup?.();
   }, [onMouseMove, updateModelSize, animateFrame]);
 
   useEffect(() => {
-    if (lastMessage?.role === 'assistant' && modelRef.current && isModelLoaded) {
+    if (lastMessage?.role === 'assistant' && modelRef.current && isLoaded) {
       const duration = lastMessage.content.length * 50;
       const startTime = Date.now();
       const animate = () => {
@@ -119,7 +126,7 @@ const Model: React.FC = memo(() => {
       };
       requestAnimationFrame(animate);
     }
-  }, [lastMessage, isModelLoaded]);
+  }, [lastMessage, isLoaded]);
 
   return <canvas ref={canvasRef} style={{ width: '100vw', height: '100vh' }} />;
 });
