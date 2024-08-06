@@ -1,6 +1,6 @@
 "use client";
 import * as PIXI from "pixi.js";
-import React, { useEffect, useRef, useCallback, memo } from "react";
+import React, { useEffect, useRef, useCallback, memo, useMemo } from "react";
 import { useAtomValue } from "jotai";
 import { lastMessageAtom } from "~/atoms/ChatAtom";
 
@@ -19,7 +19,6 @@ const Model: React.FC = memo(() => {
   const modelRef = useRef<any>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const mouseMoveRef = useRef({ last: 0, target: { x: 0, y: 0 }, current: { x: 0, y: 0 } });
-  const animationFrameRef = useRef<number | null>(null);
 
   const updateModelSize = useCallback(() => {
     const model = modelRef.current;
@@ -31,16 +30,23 @@ const Model: React.FC = memo(() => {
     }
   }, []);
 
-  const onMouseMove = useCallback((event: MouseEvent) => {
-    const rect = appRef.current?.view.getBoundingClientRect();
-    if (rect) {
-      const { clientX, clientY } = event;
-      mouseMoveRef.current.target = {
-        x: ((clientX - rect.left) / rect.width - 0.5) * 2 * SENSITIVITY,
-        y: -(((clientY - rect.top) / rect.height - 0.5) * 2 * SENSITIVITY),
-      };
-      mouseMoveRef.current.last = Date.now();
-    }
+  const onMouseMove = useMemo(() => {
+    let throttleTimeout: ReturnType<typeof setTimeout> | null = null;
+    return (event: MouseEvent) => {
+      if (throttleTimeout) return;
+      throttleTimeout = setTimeout(() => {
+        const rect = appRef.current?.view.getBoundingClientRect();
+        if (rect) {
+          const { clientX, clientY } = event;
+          mouseMoveRef.current.target = {
+            x: ((clientX - rect.left) / rect.width - 0.5) * 2 * SENSITIVITY,
+            y: -(((clientY - rect.top) / rect.height - 0.5) * 2 * SENSITIVITY),
+          };
+          mouseMoveRef.current.last = Date.now();
+        }
+        throttleTimeout = null;
+      }, 16);
+    };
   }, []);
 
   const updateHeadPosition = useCallback(() => {
@@ -56,13 +62,8 @@ const Model: React.FC = memo(() => {
     }
   }, []);
 
-  const animateFrame = useCallback(() => {
-    updateHeadPosition();
-    appRef.current?.renderer.render(appRef.current.stage);
-    animationFrameRef.current = requestAnimationFrame(animateFrame);
-  }, [updateHeadPosition]);
-
   useEffect(() => {
+    let animationFrameId: number;
     (async () => {
       await preloadModules();
       const app = new PIXI.Application({
@@ -80,6 +81,12 @@ const Model: React.FC = memo(() => {
       updateModelSize();
 
       window.addEventListener('mousemove', onMouseMove, { passive: true });
+
+      const animateFrame = () => {
+        updateHeadPosition();
+        app.render();
+        animationFrameId = requestAnimationFrame(animateFrame);
+      };
       animateFrame();
 
       const handleResize = () => {
@@ -91,18 +98,18 @@ const Model: React.FC = memo(() => {
       return () => {
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('mousemove', onMouseMove);
-        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        cancelAnimationFrame(animationFrameId);
         app.destroy(true, { children: true, texture: true, baseTexture: true });
       };
     })();
-  }, [onMouseMove, updateModelSize, animateFrame]);
+  }, [onMouseMove, updateModelSize, updateHeadPosition]);
 
   useEffect(() => {
     if (lastMessage?.role === 'assistant' && modelRef.current) {
       const duration = lastMessage.content.length * 50;
-      const startTime = Date.now();
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
+      const startTime = performance.now();
+      const animate = (time: number) => {
+        const elapsed = time - startTime;
         modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY',
           elapsed < duration ? Math.sin(elapsed / 100) * 0.5 + 0.5 : 0);
         if (elapsed < duration) requestAnimationFrame(animate);

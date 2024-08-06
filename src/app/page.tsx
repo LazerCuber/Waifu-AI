@@ -10,7 +10,7 @@ const Model = dynamic(() => import("~/components/Model"), { ssr: false });
 const Background = () => (
   <div className="absolute inset-0 z-0 overflow-hidden">
     <div className="background-container">
-      {[...Array(3)].map((_, index) => (
+      {Array.from({ length: 3 }, (_, index) => (
         <div key={index} className="background-image" />
       ))}
     </div>
@@ -28,9 +28,7 @@ export default function Page() {
     document.body.appendChild(script);
 
     return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
+      document.body.removeChild(script);
     };
   }, []);
 
