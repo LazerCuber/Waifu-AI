@@ -18,15 +18,13 @@ const Model: React.FC = memo(() => {
   const lastMessage = useAtomValue(lastMessageAtom);
   const modelRef = useRef<any>(null);
   const appRef = useRef<PIXI.Application | null>(null);
-  const lastMouseMoveRef = useRef(0);
-  const targetPositionRef = useRef({ x: 0, y: 0 });
-  const currentPositionRef = useRef({ x: 0, y: 0 });
+  const mouseMoveRef = useRef({ last: 0, target: { x: 0, y: 0 }, current: { x: 0, y: 0 } });
   const animationFrameRef = useRef<number | null>(null);
 
   const updateModelSize = useCallback(() => {
     const model = modelRef.current;
     const app = appRef.current;
-    if (model && app?.screen) {
+    if (model && app) {
       const scale = Math.min(app.screen.width / model.width, app.screen.height / model.height);
       model.scale.set(scale);
       model.position.set(app.screen.width / 2, app.screen.height * 0.85);
@@ -36,11 +34,11 @@ const Model: React.FC = memo(() => {
   const onMouseMove = useCallback((event: MouseEvent) => {
     const rect = appRef.current?.view.getBoundingClientRect();
     if (rect) {
-      targetPositionRef.current = {
+      mouseMoveRef.current.target = {
         x: ((event.clientX - rect.left) / rect.width - 0.5) * 2 * SENSITIVITY,
         y: -(((event.clientY - rect.top) / rect.height - 0.5) * 2 * SENSITIVITY),
       };
-      lastMouseMoveRef.current = Date.now();
+      mouseMoveRef.current.last = Date.now();
     }
   }, []);
 
@@ -48,16 +46,14 @@ const Model: React.FC = memo(() => {
     const model = modelRef.current;
     if (model) {
       const now = Date.now();
-      const timeSinceLastMove = now - lastMouseMoveRef.current;
-      const factor = Math.max(0, Math.min((timeSinceLastMove - RECENTER_DELAY) / 2000, 1));
+      const factor = Math.max(0, Math.min((now - mouseMoveRef.current.last - RECENTER_DELAY) / 2000, 1));
       const target = {
-        x: targetPositionRef.current.x * (1 - factor),
-        y: targetPositionRef.current.y * (1 - factor),
+        x: mouseMoveRef.current.target.x * (1 - factor),
+        y: mouseMoveRef.current.target.y * (1 - factor),
       };
-
-      currentPositionRef.current.x += (target.x - currentPositionRef.current.x) * SMOOTHNESS;
-      currentPositionRef.current.y += (target.y - currentPositionRef.current.y) * SMOOTHNESS;
-      model.internalModel.focusController?.focus(currentPositionRef.current.x, currentPositionRef.current.y);
+      mouseMoveRef.current.current.x += (target.x - mouseMoveRef.current.current.x) * SMOOTHNESS;
+      mouseMoveRef.current.current.y += (target.y - mouseMoveRef.current.current.y) * SMOOTHNESS;
+      model.internalModel.focusController?.focus(mouseMoveRef.current.current.x, mouseMoveRef.current.current.y);
     }
   }, []);
 
