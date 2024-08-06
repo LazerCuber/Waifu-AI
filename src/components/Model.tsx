@@ -54,10 +54,8 @@ const Model: React.FC = memo(() => {
     if (model) {
       const now = Date.now();
       const factor = Math.max(0, Math.min((now - mouseMoveRef.current.last - RECENTER_DELAY) / 2000, 1));
-      const targetX = mouseMoveRef.current.target.x * (1 - factor);
-      const targetY = mouseMoveRef.current.target.y * (1 - factor);
-      mouseMoveRef.current.current.x += (targetX - mouseMoveRef.current.current.x) * SMOOTHNESS;
-      mouseMoveRef.current.current.y += (targetY - mouseMoveRef.current.current.y) * SMOOTHNESS;
+      mouseMoveRef.current.current.x += (mouseMoveRef.current.target.x * (1 - factor) - mouseMoveRef.current.current.x) * SMOOTHNESS;
+      mouseMoveRef.current.current.y += (mouseMoveRef.current.target.y * (1 - factor) - mouseMoveRef.current.current.y) * SMOOTHNESS;
       model.internalModel.focusController?.focus(mouseMoveRef.current.current.x, mouseMoveRef.current.current.y);
     }
   }, []);
@@ -81,7 +79,6 @@ const Model: React.FC = memo(() => {
       updateModelSize();
 
       window.addEventListener('mousemove', onMouseMove, { passive: true });
-
       const animateFrame = () => {
         updateHeadPosition();
         app.render();
@@ -94,7 +91,6 @@ const Model: React.FC = memo(() => {
         updateModelSize();
       };
       window.addEventListener('resize', handleResize);
-
       return () => {
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('mousemove', onMouseMove);
@@ -118,7 +114,7 @@ const Model: React.FC = memo(() => {
     }
   }, [lastMessage]);
 
-  return <canvas ref={canvasRef} style={{ width: '100vw', height: '100vh', display: 'block' }} />;
+  return <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />;
 });
 
 export default Model;
