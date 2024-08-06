@@ -26,7 +26,7 @@ export default function Page() {
     script.defer = true;
     script.onload = () => setLive2dLoaded(true);
     document.body.appendChild(script);
-    
+
     return () => {
       if (document.body.contains(script)) {
         document.body.removeChild(script);
