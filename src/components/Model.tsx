@@ -1,6 +1,6 @@
 "use client";
 import * as PIXI from "pixi.js";
-import React, { useEffect, useRef, useCallback, memo, useMemo } from "react";
+import React, { useEffect, useRef, useCallback, memo, useMemo, useState } from "react";
 import { useAtomValue } from "jotai";
 import { lastMessageAtom } from "~/atoms/ChatAtom";
 
@@ -19,6 +19,7 @@ const Model: React.FC = memo(() => {
   const modelRef = useRef<any>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const mouseMoveRef = useRef({ last: 0, target: { x: 0, y: 0 }, current: { x: 0, y: 0 } });
+  const [isModelLoaded, setIsModelLoaded] = useState(false);
 
   const updateModelSize = useCallback(() => {
     const model = modelRef.current;
@@ -75,10 +76,12 @@ const Model: React.FC = memo(() => {
       });
       appRef.current = app;
 
-      modelRef.current = await Live2DModel.from("/model/vanilla/vanilla.model3.json");
-      app.stage.addChild(modelRef.current);
-      modelRef.current.anchor.set(0.5, 0.78);
+      const model = await Live2DModel.from("/model/vanilla/vanilla.model3.json");
+      modelRef.current = model;
+      app.stage.addChild(model);
+      model.anchor.set(0.5, 0.78);
       updateModelSize();
+      setIsModelLoaded(true);
 
       window.addEventListener('mousemove', onMouseMove, { passive: true });
 
@@ -105,7 +108,7 @@ const Model: React.FC = memo(() => {
   }, [onMouseMove, updateModelSize, updateHeadPosition]);
 
   useEffect(() => {
-    if (lastMessage?.role === 'assistant' && modelRef.current) {
+    if (lastMessage?.role === 'assistant' && modelRef.current && isModelLoaded) {
       const duration = lastMessage.content.length * 50;
       const startTime = performance.now();
       const animate = (time: number) => {
@@ -116,7 +119,7 @@ const Model: React.FC = memo(() => {
       };
       requestAnimationFrame(animate);
     }
-  }, [lastMessage]);
+  }, [lastMessage, isModelLoaded]);
 
   return <canvas ref={canvasRef} style={{ width: '100vw', height: '100vh', display: 'block' }} />;
 });
