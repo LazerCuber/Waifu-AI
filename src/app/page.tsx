@@ -10,9 +10,7 @@ const Model = dynamic(() => import("~/components/Model"), { ssr: false });
 const Background = () => (
   <div className="absolute inset-0 z-0 overflow-hidden">
     <div className="background-container">
-      {Array.from({ length: 3 }, (_, index) => (
-        <div key={index} className="background-image" />
-      ))}
+      <div className="background-image" />
     </div>
   </div>
 );
