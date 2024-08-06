@@ -34,9 +34,10 @@ const Model: React.FC = memo(() => {
   const onMouseMove = useCallback((event: MouseEvent) => {
     const rect = appRef.current?.view.getBoundingClientRect();
     if (rect) {
+      const { clientX, clientY } = event;
       mouseMoveRef.current.target = {
-        x: ((event.clientX - rect.left) / rect.width - 0.5) * 2 * SENSITIVITY,
-        y: -(((event.clientY - rect.top) / rect.height - 0.5) * 2 * SENSITIVITY),
+        x: ((clientX - rect.left) / rect.width - 0.5) * 2 * SENSITIVITY,
+        y: -(((clientY - rect.top) / rect.height - 0.5) * 2 * SENSITIVITY),
       };
       mouseMoveRef.current.last = Date.now();
     }
@@ -47,12 +48,10 @@ const Model: React.FC = memo(() => {
     if (model) {
       const now = Date.now();
       const factor = Math.max(0, Math.min((now - mouseMoveRef.current.last - RECENTER_DELAY) / 2000, 1));
-      const target = {
-        x: mouseMoveRef.current.target.x * (1 - factor),
-        y: mouseMoveRef.current.target.y * (1 - factor),
-      };
-      mouseMoveRef.current.current.x += (target.x - mouseMoveRef.current.current.x) * SMOOTHNESS;
-      mouseMoveRef.current.current.y += (target.y - mouseMoveRef.current.current.y) * SMOOTHNESS;
+      const targetX = mouseMoveRef.current.target.x * (1 - factor);
+      const targetY = mouseMoveRef.current.target.y * (1 - factor);
+      mouseMoveRef.current.current.x += (targetX - mouseMoveRef.current.current.x) * SMOOTHNESS;
+      mouseMoveRef.current.current.y += (targetY - mouseMoveRef.current.current.y) * SMOOTHNESS;
       model.internalModel.focusController?.focus(mouseMoveRef.current.current.x, mouseMoveRef.current.current.y);
     }
   }, []);
@@ -66,10 +65,8 @@ const Model: React.FC = memo(() => {
   useEffect(() => {
     (async () => {
       await preloadModules();
-      if (!canvasRef.current) return;
-
       const app = new PIXI.Application({
-        view: canvasRef.current,
+        view: canvasRef.current!,
         backgroundAlpha: 0,
         resizeTo: window,
         resolution: window.devicePixelRatio || 1,
@@ -106,7 +103,7 @@ const Model: React.FC = memo(() => {
       const startTime = Date.now();
       const animate = () => {
         const elapsed = Date.now() - startTime;
-        modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', 
+        modelRef.current.internalModel.coreModel.setParameterValueById('ParamMouthOpenY',
           elapsed < duration ? Math.sin(elapsed / 100) * 0.5 + 0.5 : 0);
         if (elapsed < duration) requestAnimationFrame(animate);
       };
