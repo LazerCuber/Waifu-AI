@@ -5,8 +5,8 @@
 - Latency improvments
 - Live2d lag fix
 - Speech to Text coming soon
-- Moving background
-- Live2d Mouth working
+- Live2d Lip sync
+- Smoother Live2D movements
 
 ### Requirements (same with the original repo) 
 * node
