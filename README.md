@@ -15,7 +15,7 @@
   npm install -g pnpm
   ```
 * ChatGPT or Groq API key (optional)
-* Mistral API key (optional, must choose either one of them)
+* Mistral API key (optional, must choose either one of them) (Unavailable Soon)
 * ElevenLabs API key
 
     or if you have the GitHub CLI installed
