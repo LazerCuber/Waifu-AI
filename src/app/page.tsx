@@ -8,10 +8,8 @@ const ChatterBox = dynamic(() => import("~/components/ChatterBox"), { ssr: false
 const Model = dynamic(() => import("~/components/Model"), { ssr: false });
 
 const Background = () => (
-  <div className="absolute inset-0 z-0 overflow-hidden">
-    <div className="background-container">
-      <div className="background-image" />
-    </div>
+  <div className="absolute inset-0 z-0 overflow-hidden bg-cover bg-center" 
+       style={{ backgroundImage: 'url(/one.avif)' }}>
   </div>
 );
 
