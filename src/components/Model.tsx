@@ -9,8 +9,11 @@ if (typeof window !== "undefined") (window as any).PIXI = PIXI;
 const SENSITIVITY = 0.95, SMOOTHNESS = 0.1, RECENTER_DELAY = 1000;
 let Live2DModel: any;
 
+const live2DModelImport = import("pixi-live2d-display/cubism4");
+
 const preloadModules = async () => {
-  Live2DModel = (await import("pixi-live2d-display/cubism4")).Live2DModel;
+  const module = await live2DModelImport;
+  Live2DModel = module.Live2DModel;
 };
 
 const Model: React.FC = memo(() => {
