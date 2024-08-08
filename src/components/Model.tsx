@@ -105,7 +105,7 @@ const Model: React.FC = memo(() => {
 
   useEffect(() => {
     if (lastMessage?.role === 'assistant' && modelRef.current) {
-      const duration = lastMessage.content.length * 50;
+      const duration = lastMessage.content.length * 55;
       const startTime = performance.now();
       const animate = (time: number) => {
         const elapsed = time - startTime;
